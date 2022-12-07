@@ -15,7 +15,11 @@ export class GiteaConnector {
     }
 
     public async getIssues(repoUri: string, state: string, page: number = 0): Promise<IGiteaResponse> {
-        return this.getEndpoint(`${repoUri}?state=${state}&page=${page}`);
+        return this.getEndpoint(`${repoUri}?state=${state}&page=${page}&limit=50`);
+    }
+
+    public async getIssueComments(repoUri: string, page: number = 0): Promise<IGiteaResponse> {
+        return this.getEndpoint(`${repoUri}/comments?page=${page}&limit=50`);
     }
 
     private async getEndpoint(url: string): Promise<IGiteaResponse> {

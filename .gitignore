@@ -5,3 +5,4 @@ node_modules
 .gitea/
 gitea/
 mysql/
+package-lock.json

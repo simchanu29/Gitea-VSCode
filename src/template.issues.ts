@@ -1,4 +1,4 @@
-import { Issue } from './issue';
+import { Comment, Issue } from './treenodes';
 
 export function showIssueHTML(issue: Issue) {
   return `<body>
@@ -49,24 +49,44 @@ export function showIssueMD(issue: Issue) {
 
     let assignees = issue.assignees === null ? "Nobody" : issue.assignees.map(assignee => { return assignee.login }).join(', ');
 
-    let md =  `# {{title}} (#{{id}})
+    let md =  
+`# {{title}} (#{{id}})
 
 {{description}}
 
----
+`
+    .replace('{{title}}', issue.title)
+    .replace('{{id}}', issue.issueId.toString())
+    .replace('{{description}}', issue.body)
+
+    let footer = 
+`---
 
 * State: {{state}}
 * Assignee: {{assignee}}
 * Labels: {{labels}}
 * [See in browser]({{html_url}})
-    `
-    .replace('{{title}}', issue.title)
-    .replace('{{id}}', issue.issueId.toString())
-    .replace('{{description}}', issue.body)
+`
     .replace('{{state}}', issue.state)
     .replace('{{assignee}}', assignees)
     .replace('{{labels}}', md_labels)
     .replace('{{html_url}}', issue.html_url)
 
-    return md
+    let result = md;
+    issue.comments.forEach((comment: Comment) => {
+        result = result + 
+`---
+__{{author}}__ - *{{date}}*
+
+{{content}}
+
+`
+        .replace('{{author}}', comment.author)
+        .replace('{{date}}', comment.created_at)
+        .replace('{{content}}', comment.body)
+        .replace('![image](/attachments/', "![image]("+issue.repo_url+"/attachments/")
+    });
+    result = result + footer
+
+    return result
 }

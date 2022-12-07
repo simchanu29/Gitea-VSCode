@@ -4,7 +4,7 @@ interface ConfigStorage {
     token: string;
     instanceURL: string;
     owner: string;
-    repo: string;
+    repoList: Array<string>;
     sslVerify: boolean;
     baseURL: string;
     render: string;
@@ -12,7 +12,7 @@ interface ConfigStorage {
 }
 
 export interface ConfigTypes extends ConfigStorage {
-    readonly repoApiUrl: string;
+    readonly repoApiUrlList: Array<string>;
 }
 
 export class Config implements ConfigTypes {
@@ -20,7 +20,7 @@ export class Config implements ConfigTypes {
         return workspace.getConfiguration('gitea', null);
     }
 
-    private loadConfigValue<T extends keyof ConfigStorage>(configKey: T, type: 'string' | 'boolean' | 'number', acceptDetault = false): ConfigStorage[T] {
+    private loadConfigValue<T extends keyof ConfigStorage>(configKey: T, type: 'string' | 'string[]' | 'boolean' | 'number', acceptDetault = false): ConfigStorage[T] {
         if (!acceptDetault && !this.storage.has(configKey)) {
             window.showErrorMessage("Gitea-VSCode didn't find a required configuration value: " + configKey);
             throw new Error(`Failed to load configuration: "${configKey}"`);
@@ -30,7 +30,20 @@ export class Config implements ConfigTypes {
             ? (this.storage.get(configKey) as ConfigStorage[T])
             : (this.storage.inspect(configKey) as { defaultValue: ConfigStorage[T]; key: string }).defaultValue;
 
-        if (typeof value === type && (type !== 'string' || (value as string).length > 0)) {
+        if(type == 'string[]') {
+            if (Array.isArray(value)) {
+                var somethingIsNotString = false;
+                value.forEach(function(item){
+                    if(typeof item !== 'string'){
+                        somethingIsNotString = true;
+                    }
+                })
+                if(!somethingIsNotString && value.length > 0){
+                    return value as ConfigStorage[T];
+                }
+            }
+        }
+        else if (typeof value === type && (type !== 'string' || (value as string).length > 0)) {
             return value as ConfigStorage[T];
         }
 
@@ -70,19 +83,25 @@ export class Config implements ConfigTypes {
         this.storage.update('owner', value);
     }
 
-    public get repo() {
-        return this.loadConfigValue('repo', 'string');
+    public get repoList() {
+        return this.loadConfigValue('repoList', 'string[]');
     }
 
-    public set repo(value) {
-        this.storage.update('repo', value);
+    public set repoList(value) {
+        this.storage.update('repoList', value);
     }
 
-    public get repoApiUrl(): string {
-        return this.instanceURL.replace(/\/$/, "") +
-            '/api/v1/repos/' +
-            this.owner +
-            '/' + this.repo + '/issues';
+    public get repoApiUrlList(): Array<string> {
+        let urlList: Array<string> = [];
+        this.repoList.forEach((repo: string) => {
+            const url: string = 
+                this.instanceURL.replace(/\/$/, "") +
+                '/api/v1/repos/' +
+                this.owner +
+                '/' + repo + '/issues';
+            urlList.push(url);
+        });
+        return urlList;
     }
 
     public set sslVerify(value) {

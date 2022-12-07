@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 
 import { showIssueHTML, showIssueMD } from './template.issues';
-import { Issue } from './issue';
-import { IssueProvider } from './issueProvider';
+import { Issue, Repository } from './treenodes';
 import { Config } from './config';
-import MarkdownIt = require('markdown-it');
 import { Logger } from './logger';
+import { RepositoryProvider } from './repositoriesProvider';
+import MarkdownIt = require('markdown-it');
+import { utimesSync } from 'fs';
 
 export function showIssueInWebPanel(issue: Issue) {
     const panel = vscode.window.createWebviewPanel(
@@ -32,19 +33,15 @@ export function showIssueInWebPanel(issue: Issue) {
 export function activate(context: vscode.ExtensionContext) {
     Logger.init()
     Logger.log('Starting Gitea ...');
-
+    
     // Array of issues; This is used to determine whether a issue is already open
     // in a tab or not.
     let openIssues: Array<Issue> = [];
-    const openIssuesProvider = new IssueProvider("open");
-    const closedIssuesProvider = new IssueProvider("closed");
+    const repositoryProvider = new RepositoryProvider();
+    vscode.window.registerTreeDataProvider("giteaIssues.repositories", repositoryProvider);        
 
-    vscode.window.registerTreeDataProvider('giteaIssues.opened-issues', openIssuesProvider);
-    vscode.window.registerTreeDataProvider('giteaIssues.closed-issues', closedIssuesProvider);
-
-    vscode.commands.registerCommand('giteaIssues.openIssue', (issue: Issue) => {
+    vscode.commands.registerCommand('giteaIssues.showIssue', (issue: Issue) => {
         const issueOpenable = openIssues.find((c) => c.issueId === issue.issueId) === undefined;
-
         if (issueOpenable) {
             const panel = showIssueInWebPanel(issue);
             openIssues.push(issue);
@@ -55,10 +52,29 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     vscode.commands.registerCommand('giteaIssues.refreshIssues', () => {
-        openIssuesProvider.refresh();
-        closedIssuesProvider.refresh();
+        repositoryProvider.refresh();
     });
 
+    vscode.commands.registerCommand('giteaIssues.openIssue', (repo: Repository) => {
+        vscode.env.openExternal(vscode.Uri.parse(repo.base_url+'/issues/new'));
+    });
+
+    // Unused
+    vscode.commands.registerCommand('giteaIssues.toogleIssue', (issue: Issue) => {
+        Logger.log("reopen or close issue " + issue.issueId);
+        vscode.env.openExternal(vscode.Uri.parse(issue.html_url)); // TODO use API with a web view
+    });
+
+    vscode.commands.registerCommand('giteaIssues.openRepoInBrowser', (elt: Repository | Issue) => {
+        if (elt instanceof Repository) {
+            vscode.env.openExternal(vscode.Uri.parse(elt.base_url+'/issues'));
+        }
+        else if (elt instanceof Issue) {
+            vscode.env.openExternal(vscode.Uri.parse(elt.html_url));
+        }
+    });
+
+    // await repositoryProvider.refresh();
     Logger.log('Gitea is ready')
 }
 

@@ -87,3 +87,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 [1]: https://github.com/IJustDev/Gitea-VSCode/issues/1
 [2]: https://github.com/IJustDev/Gitea-VSCode/issues/2
 [21]: https://github.com/IJustDev/Gitea-VSCode/issues/21
+
+Update by Simon CHANU : 
+- Change architecture to handle multiple repositories
+- Open in browser
+- New issue
