@@ -20,6 +20,16 @@ Gitea-VSCode is an Visual Studio Code extension that allows you to manage (curre
 ## Support
 <a href="https://www.buymeacoffee.com/IJustDev" target="_blank"><img src="https://bmc-cdn.nyc3.digitaloceanspaces.com/BMC-button-images/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: auto !important;width: auto !important;" ></a>
 
+## Install
+
+### With the extension manager
+
+Currently this version of the extension is not published
+### VSIX file
+
+1. Download on the release page the last VSIX release
+2. On Extension panel in VSCode, go to `Install from VSIX...` and select the downloaded file
+
 ## Getting Started
 
 Go to your settings, and find the `Gitea` section, and fill out the details.
