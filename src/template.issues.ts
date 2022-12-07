@@ -1,6 +1,28 @@
 import { Comment, Issue } from './treenodes';
 import MarkdownIt = require('markdown-it');
 
+export function getBadges(issue: Issue) {
+    return issue.labels.map(label => {
+        return '![' + label.name + '](https://img.shields.io/badge/' + label.name + '-' + label.color + '.svg)'
+    }).join(', ')
+}
+
+export function getAssignee(issue: Issue) {
+    return issue.assignees === null ? "None" : issue.assignees.map(assignee => { return assignee.login }).join(', ');
+}
+
+export function markdown_render(md: string, issue: Issue): string {
+    let markdownIt = new MarkdownIt()
+
+    let html = markdownIt.render(md
+        .replace('![image](/attachments/', "![image]("+issue.repo_url+"/attachments/")
+    )
+    .replaceAll('[ ]', '<input type="checkbox" disabled>')
+    .replaceAll('[x]', '<input type="checkbox" disabled checked>')
+    html = html.replace(/([^"'])(https:\/\/[^ "'\)<]+)/g, '$1<a href=$2>$2</a>')
+    return html
+}
+
 export function showIssueHTML(issue: Issue) {
     let markdownIt = new MarkdownIt()
 
@@ -39,12 +61,19 @@ export function showIssueHTML(issue: Issue) {
             <h1>{{label}}</h1>
             <table>
                 <tr>
-                    <td><b>State</b></td><td>: {{state}}</td>
+                    <td><b>State</b></td><td style="width: 100%">: {{state}}</td>
                 </tr>
                 <tr>
-                    <td><b>Assignee</b></td><td>: {{assignee}}</td>
+                    <td><b>Author</b></td><td style="width: 100%">: {{author}}</td>
+                </tr>
+                <tr>
+                    <td><b>Assignees</b></td><td style="width: 100%">: {{assignees}}</td>
+                </tr>
+                <tr>
+                    <td><b>Labels</b></td><td style="width: 100%">{{labels}}</td>
                 </tr>
             </table>
+            <a href={{html_url}}>View in browser</a>
         </div>
         <div class="post-container">
             <div class="post-header">
@@ -56,12 +85,14 @@ export function showIssueHTML(issue: Issue) {
         </div>
     `
         .replace('{{label}}', issue.label)
+        .replaceAll('{{author}}', issue.creator)
         .replace('{{state}}', issue.state)
-        .replace('{{assignee}}', issue.assignee)
-        .replace('{{author}}', issue.creator)
-        .replace('{{date}}', issue.created_at)
-        .replace('{{description}}', markdownIt.render(issue.body))
-        .replace('{{label}}', issue.label);
+        .replace('{{assignees}}', getAssignee(issue))
+        .replace('{{labels}}', markdown_render(": " + getBadges(issue), issue))
+        .replace('{{html_url}}', issue.html_url)
+        .replace('{{date}}', new Date(issue.created_at).toLocaleString())
+        .replace('{{label}}', issue.label)
+        .replace('{{description}}', markdown_render(issue.body, issue));
 
     
     let posts = ``
@@ -80,8 +111,8 @@ export function showIssueHTML(issue: Issue) {
         </div>
         `        
         .replace('{{author}}', comment.author)
-        .replace('{{date}}', comment.created_at)
-        .replace('{{content}}', markdownIt.render(comment.body))
+        .replace('{{date}}', new Date(comment.created_at).toLocaleString())
+        .replace('{{content}}', markdown_render(comment.body, issue))
 
         posts = posts + post 
     });
@@ -89,13 +120,9 @@ export function showIssueHTML(issue: Issue) {
     return '<header>' + style + '</header>' + '<body>' + first_post + posts + '</body>'
 }
 
-
 export function showIssueMD(issue: Issue) {
-    let md_labels = issue.labels.map(label => {
-        return '![' + label.name + '](https://img.shields.io/badge/' + label.name + '-' + label.color + '.svg)'
-    }).join(', ')
-
-    let assignees = issue.assignees === null ? "Nobody" : issue.assignees.map(assignee => { return assignee.login }).join(', ');
+    let md_labels = getBadges(issue);
+    let assignees = getAssignee(issue);
 
     let md =  
 `# {{title}} (#{{id}})
@@ -131,7 +158,7 @@ __{{author}}__ - *{{date}}*
 
 `
         .replace('{{author}}', comment.author)
-        .replace('{{date}}', comment.created_at)
+        .replace('{{date}}', new Date(comment.created_at).toLocaleString())
         .replace('{{content}}', comment.body)
         .replace('![image](/attachments/', "![image]("+issue.repo_url+"/attachments/")
     });

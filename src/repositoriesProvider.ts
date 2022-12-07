@@ -36,6 +36,8 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
             ))
         });
 
+        // TODO discover submodules
+
         return this.repoList;
     }
 
