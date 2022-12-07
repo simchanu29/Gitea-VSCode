@@ -15,7 +15,7 @@
 </div>
 
 ## Overview
-Gitea-VSCode is an Visual Studio Code extension that allows you to manage (currently only view) your issues.
+Gitea-VSCode is an Visual Studio Code extension that allows you to manage (currently only view) your issues on multiple repositories.
 
 ## Support
 <a href="https://www.buymeacoffee.com/IJustDev" target="_blank"><img src="https://bmc-cdn.nyc3.digitaloceanspaces.com/BMC-button-images/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: auto !important;width: auto !important;" ></a>
@@ -39,7 +39,7 @@ Otherwise do not push the .vscode folder to your repository and doublecheck this
 ```
     , "gitea.instanceURL": "%YOUR_GITEA_SERVER%"
     , "gitea.owner": "%OWNER%"
-    , "gitea.repo": "%REPO_NAME%"
+    , "gitea.repoList": ["%REPO_NAME%"]
 ```
 
 ### The following details are needed
