@@ -1,5 +1,6 @@
 import { Uri, TreeItem, TreeItemCollapsibleState, Command} from 'vscode';
 import * as path from "path";
+import { Comment } from "./comment";
 
 export class Repository extends TreeItem {
     contextValue = 'repository';
@@ -34,28 +35,12 @@ export class IssueType extends TreeItem {
         dark: this.getIcon(),
     };
 
-    public getIcon(){
-        if(this.label == "closed") {
-            return path.join(__filename, '..', '..', 'resources', 'light', 'issue_closed.svg')
+    public getIcon(): string {
+        if(this.label === "closed") {
+            return path.join(__filename, '..', '..', '..', 'resources', 'light', 'issue_closed.svg');
         } else {
-            return path.join(__filename, '..', '..', 'resources', 'light', 'issue_open.svg')
+            return path.join(__filename, '..', '..', '..', 'resources', 'light', 'issue_open.svg');
         }
-    }
-}
-
-export class Comment extends TreeItem {
-    constructor(
-        public readonly label: string,
-        public collapsibleState: TreeItemCollapsibleState,
-        public author: string,
-        public body: string,
-        public created_at: string,
-        public updated_at: string,
-        public issue_url: string,
-        public issueId: number
-    ) {
-        super(label, collapsibleState);
-        this.tooltip = this.body;
     }
 }
 
@@ -85,9 +70,9 @@ export class Issue extends TreeItem {
             element.title,
             element.html_url,
             element.repo_url,
-            element.comments)
+            element.comments);
         ret.original_issue = element;
-        return ret
+        return ret;
     }
 
     constructor(
@@ -113,9 +98,9 @@ export class Issue extends TreeItem {
 
     labelDependentIcon(dark: boolean = false): Uri {
         if (this.labels.length === 0) {
-        return createIconWithColor('#868686');
+            return createIconWithColor('#868686');
         } else {
-        return createIconWithColor(this.labels[0].color);
+            return createIconWithColor(this.labels[0].color);
         }
     }
 

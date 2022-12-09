@@ -1,32 +1,21 @@
-import { Comment, Issue } from './treenodes';
+import { Issue } from './nodes/issues';
+import { Comment } from './nodes/comment';
 import MarkdownIt = require('markdown-it');
+import { NotEmittedStatement } from 'typescript';
+import { Notification } from './nodes/notifications';
 
 export function getBadges(issue: Issue) {
     return issue.labels.map(label => {
         return '![' + label.name + '](https://img.shields.io/badge/' + label.name + '-' + label.color + '.svg)'
-    }).join(', ')
+    }).join(', ');
 }
 
 export function getAssignee(issue: Issue) {
     return issue.assignees === null ? "None" : issue.assignees.map(assignee => { return assignee.login }).join(', ');
 }
 
-export function markdown_render(md: string, issue: Issue): string {
-    let markdownIt = new MarkdownIt()
-
-    let html = markdownIt.render(md
-        .replace('![image](/attachments/', "![image]("+issue.repo_url+"/attachments/")
-    )
-    .replaceAll('[ ]', '<input type="checkbox" disabled>')
-    .replaceAll('[x]', '<input type="checkbox" disabled checked>')
-    html = html.replace(/([^"'])(https:\/\/[^ "'\)<]+)/g, '$1<a href=$2>$2</a>')
-    return html
-}
-
-export function showIssueHTML(issue: Issue) {
-    let markdownIt = new MarkdownIt()
-
-    let style = `
+function getStyle(): string {
+    return `
     <style>
         .title-container { 
             padding-left: 1rem; 
@@ -54,23 +43,45 @@ export function showIssueHTML(issue: Issue) {
             padding-bottom: 0.785714rem
         }
     </style>
-    `
+    ` 
+}
 
+export function markdown_render(md: string, elt: Issue | Notification): string {
+    let markdownIt = new MarkdownIt();
+
+    let html: string = ``;
+    if(elt.hasOwnProperty("issueId")){
+        html = markdownIt.render(md
+            .replace('![image](/attachments/', "![image]("+elt.repo_url+"/attachments/")
+        );
+    } else if (elt.hasOwnProperty("notificationId")) {
+        html = markdownIt.render(md);
+    }
+
+    html = html        
+        .replaceAll('[ ]', '<input type="checkbox" disabled>')
+        .replaceAll('[x]', '<input type="checkbox" disabled checked>')
+        .replace(/([^"'])(https:\/\/[^ "'\)<]+)/g, '$1<a href=$2>$2</a>');
+
+    return html;
+}
+
+export function showIssueHTML(issue: Issue) {
     let first_post = `
         <div class="title-container">
             <h1>{{label}}</h1>
             <table>
                 <tr>
-                    <td><b>State</b></td><td style="width: 100%">: {{state}}</td>
+                    <td><b>State</b></td><td>: {{state}}</td>
                 </tr>
                 <tr>
-                    <td><b>Author</b></td><td style="width: 100%">: {{author}}</td>
+                    <td><b>Author</b></td><td>: {{author}}</td>
                 </tr>
                 <tr>
-                    <td><b>Assignees</b></td><td style="width: 100%">: {{assignees}}</td>
+                    <td><b>Assignees</b></td><td>: {{assignees}}</td>
                 </tr>
                 <tr>
-                    <td><b>Labels</b></td><td style="width: 100%">{{labels}}</td>
+                    <td><b>Labels</b></td><td>{{labels}}</td>
                 </tr>
             </table>
             <a href={{html_url}}>View in browser</a>
@@ -95,11 +106,8 @@ export function showIssueHTML(issue: Issue) {
         .replace('{{description}}', markdown_render(issue.body, issue));
 
     
-    let posts = ``
+    let posts = ``;
     issue.comments.forEach((comment: Comment) => {
-        // <div style="border: 1px solid; padding-left: 1rem; padding-right: 1rem; padding-top: 0.785714rem; padding-bottom: 0.785714rem>
-        // <div style="border: 1px solid; background: #f7f7f7; padding-left: 1rem; padding-right: 1rem; padding-top: 0.785714rem; padding-bottom: 0.785714rem">
-
         let post = `     
         <div class="post-container">
             <div class="post-header">
@@ -112,12 +120,13 @@ export function showIssueHTML(issue: Issue) {
         `        
         .replace('{{author}}', comment.author)
         .replace('{{date}}', new Date(comment.created_at).toLocaleString())
-        .replace('{{content}}', markdown_render(comment.body, issue))
+        .replace('{{content}}', markdown_render(comment.body, issue));
 
-        posts = posts + post 
+        posts = posts + post;
     });
 
-    return '<header>' + style + '</header>' + '<body>' + first_post + posts + '</body>'
+    return '<header>' + getStyle()       + '</header>' + 
+           '<body>' + first_post + posts + '</body>';
 }
 
 export function showIssueMD(issue: Issue) {
@@ -165,4 +174,61 @@ __{{author}}__ - *{{date}}*
     result = result + footer
 
     return result
+}
+
+
+export function showNotificationHTML(notification: Notification) {
+    let post = `
+        <div class="title-container">
+            <h1>{{label}}</h1>
+            <table>
+                <tr>
+                    <td><b>Type</b></td><td>: {{type}}</td>
+                </tr>
+                <tr>
+                    <td><b>State</b></td><td>: {{state}}</td>
+                </tr>
+                <tr>
+                    <td><b>Title</b></td><td>: {{title}}</td>
+                </tr>
+                <tr>
+                    <td><b>Repository</b></td><td>: <a href={{repo_url}}>{{repo_url}}</a></td>
+                </tr>
+            </table>
+            <a href={{html_url}}>View in browser</a>
+        </div>
+    `
+        .replace('{{label}}', notification.label)    
+        .replace('{{title}}', notification.title)
+        .replace('{{type}}', notification.type)
+        .replace('{{state}}', notification.state)
+        .replaceAll('{{repo_url}}', notification.repo_url)
+        .replace('{{html_url}}', notification.html_url);
+
+    return '<header>' + getStyle() + '</header>' + 
+           '<body>'   + post       + '</body>';
+}
+
+export function showNotificationMD(notification: Notification) {
+    let md =  
+`# {{label}}
+
+- Type : {{type}}
+- State : {{state}}
+- Repository : {{repo_url}}
+
+`
+    .replace('{{label}}', notification.label)
+    .replace('{{id}}', notification.notificationId.toString())
+    .replace('{{type}}', notification.type)
+    .replace('{{state}}', notification.state)
+    .replace('{{repo_url}}', notification.repo_url);
+
+    let footer = 
+`---
+* [See in browser]({{html_url}})
+`
+    .replace('{{html_url}}', notification.html_url);
+
+    return md + footer;
 }

@@ -3,12 +3,17 @@ import { workspace, window } from 'vscode';
 interface ConfigStorage {
     token: string;
     instanceURL: string;
+    apiUrl: string;
     owner: string;
     repoList: Array<string>;
     sslVerify: boolean;
     baseURL: string;
     render: string;
     debug: boolean;
+    autofetch_notifications: boolean;
+    autofetch_notifications_period: number;
+    max_page_request: number;
+    max_item_request: number;
 }
 
 export interface ConfigTypes extends ConfigStorage {
@@ -49,6 +54,10 @@ export class Config implements ConfigTypes {
 
         window.showErrorMessage('Gitea-VSCode failed to load a configuration value that is needed: ' + configKey);
         throw new Error(`Failed to load configuration: "gitea.${configKey}"`);
+    }
+
+    public get apiUrl() {
+        return this.instanceURL.replace(/\/$/, "") + '/api/v1';
     }
 
     public get token() {
@@ -112,17 +121,32 @@ export class Config implements ConfigTypes {
         return this.loadConfigValue('sslVerify', 'boolean');
     }
 
+    public get autofetch_notifications() {
+        return this.loadConfigValue('autofetch_notifications', 'boolean');
+    }
+
+    public get autofetch_notifications_period() {
+        return this.loadConfigValue('autofetch_notifications_period', 'number');
+    }
+
+    public get max_page_request() {
+        return this.loadConfigValue('max_page_request', 'number');
+    }
+
+    public get max_item_request() {
+        return this.loadConfigValue('max_item_request', 'number');
+    }
 
     public get render() {
-        return this.loadConfigValue('render', 'string')
+        return this.loadConfigValue('render', 'string');
     }
 
     public set render(value) {
-        this.storage.update('render', value)
+        this.storage.update('render', value);
     }
 
     public set debug(value) {
-        this.storage.update('debug', value)
+        this.storage.update('debug', value);
     }
 
     public get debug(): boolean {

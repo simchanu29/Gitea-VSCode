@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { Repository, Issue, IssueType, Comment } from './treenodes';
-import { Config } from './config';
-import { GiteaConnector } from './giteaConnector';
-import { Logger } from './logger';
-
-const MAX_PAGES=500 // TODO move to config
+import { Repository, Issue, IssueType } from '../nodes/issues';
+import { Comment } from '../nodes/comment';
+import { Config } from '../config';
+import { GiteaConnector } from '../gitea/giteaConnector';
+import { Logger } from '../logger';
+import { config } from 'process';
 
 export class RepositoryProvider implements vscode.TreeDataProvider<Repository | IssueType | Issue> {
     private _onDidChangeTreeData: vscode.EventEmitter<Issue | undefined | null | void> = new vscode.EventEmitter<Issue | undefined | null | void>();
@@ -27,13 +27,13 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
         const config = new Config();
         config.repoList.forEach((repoName: string, index) => {
             const name = config.repoList[index];
-            const issue_url = config.instanceURL.replace(/\/$/, "")+'/api/v1/repos/'+config.owner+'/'+name+'/issues';
+            const issue_url = config.apiUrl+'/repos/'+config.owner+'/'+name+'/issues';
             const base_url = config.instanceURL.replace(/\/$/, "")+'/'+config.owner+'/'+name;
 
             this.repoList.push(new Repository(name, vscode.TreeItemCollapsibleState.Collapsed, issue_url, base_url,
                 new IssueType("open", vscode.TreeItemCollapsibleState.Collapsed, []), 
                 new IssueType("closed", vscode.TreeItemCollapsibleState.Collapsed, [])
-            ))
+            ));
         });
 
         // TODO discover submodules
@@ -42,10 +42,11 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
     }
 
     private async getCommentsAsync_(conn: GiteaConnector, url: string): Promise<Comment[]> {
+        const config = new Config();
         const comments = [];
 
         let page = 1;
-        while (page < MAX_PAGES+1) {
+        while (page < config.max_page_request+1) {
             Logger.log( `Retrieve comments. page ${page}`);
             const commentsOfPage = (await conn.getIssueComments(url, page)).data;    
             Logger.log( `${commentsOfPage.length} comments retrieved (page: ${page})`);
@@ -56,7 +57,7 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
                 c.issueId = parseInt(c.issue_url.split('/').at(-1)) 
             });
             page++;
-            if (commentsOfPage.length < 50) { // TODO move this limit to config
+            if (commentsOfPage.length < config.max_item_request) { // TODO move this limit to config
                 break;
             }
         }
@@ -67,9 +68,10 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
 
     private async getIssuesAsync_(conn: GiteaConnector, state: string, url: string): Promise<Issue[]> {
         const issues = [];
+        const config = new Config();
 
         let page = 1;
-        while (page < MAX_PAGES+1) {
+        while (page < config.max_page_request+1) {
             Logger.log( `Retrieve issues. State: ${state} - page ${page}`);
             const issuesOfPage = (await conn.getIssues(url, state, page)).data;    
             Logger.log( `${issuesOfPage.length} issues retrieved (state: ${state} - page: ${page})`);
@@ -92,20 +94,20 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
         return issues;
     }
 
-    private populate_issues(node: IssueType, issues: Issue[], comments: Comment[]) {
+    private populate_command_on_click(node: IssueType, issues: Issue[], comments: Comment[]) {
        
         issues.forEach((element: Issue) => {
-            element.comments = []
+            element.comments = [];
             comments.forEach((comment: Comment) => {
-                if (comment.issueId == element.issueId) {
-                    element.comments.push(comment)
+                if (comment.issueId === element.issueId) {
+                    element.comments.push(comment);
                 }
             })
 
-            let issue = Issue.createIssue(element)
+            let issue = Issue.createIssue(element);
 
             issue.command = {
-                command: 'giteaIssues.showIssue',
+                command: 'giteaVscode.showIssue',
                 title: '',
                 arguments: [element],
             };
@@ -127,8 +129,8 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
         let issuesClosed = (await this.getIssuesAsync_(giteaConnector, "closed", repo.issue_url));
         let comments = (await this.getCommentsAsync_(giteaConnector, repo.issue_url));
 
-        this.populate_issues(repo.issuesOpen, issuesOpen, comments);
-        this.populate_issues(repo.issuesClosed, issuesClosed, comments);
+        this.populate_command_on_click(repo.issuesOpen, issuesOpen, comments);
+        this.populate_command_on_click(repo.issuesClosed, issuesClosed, comments);
 
         return repo;
     }

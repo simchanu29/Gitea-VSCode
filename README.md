@@ -63,9 +63,9 @@ Otherwise do not push the .vscode folder to your repository and doublecheck this
 
 When you've finished you can press the refresh button in the open issues section and you'll see the issues of the first 10 pages (only open issues).
 
-## Issue colors
+## Features
 
-![Issues with multiple colors](./media/gitea-issues.png)
+![Multiple repositories and panels](./media/screenshot.png)
 
 In order to get nice looking issue icons in multiple colors (of your choice) you just need to assign a label to your issue. The color is being fetched automatically. In most cases you need to restart visual studio code to apply the icons in the issues tab if you've changed them though.
 
@@ -82,10 +82,13 @@ NOTE: Be sure to merge the latest from "upstream" before making a pull request!
 
 ## Roadmap
 
-- Implement a `Close Issue` Button
 - Create Issues via Webview
 - `Comment` Issues
 - Support multiple git servers
 
+## Roadmap SCU
+
+- Use a Gitea authenticator once available
+- Go toward a Gitea extension like this : https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github
 
 [logo]: resources/icon.png

@@ -1,9 +1,9 @@
 {
     "name": "gitea-vscode",
     "displayName": "Gitea-VSCode",
-    "description": "Gitea Issue Tracker for vs-code",
+    "description": "Gitea Tracker for vs-code",
     "publisher": "simchanu29",
-    "version": "2.2.0-0.1.2",
+    "version": "2.2.0-0.2.0",
     "engines": {
         "vscode": "^1.70.0"
     },
@@ -11,42 +11,52 @@
         "Other"
     ],
     "activationEvents": [
-        "onView:giteaIssues.repositories",
-        "onCommand:giteaIssues.refreshIssues"
+        "onView:giteaVscode.issues",
+        "onView:giteaVscode.notifications",
+        "onCommand:giteaVscode.refreshIssues",
+        "onCommand:giteaVscode.refreshNotifications"
     ],
     "main": "./out/extension.js",
     "icon": "resources/icon.png",
     "contributes": {
         "viewsWelcome": [
             {
-                "view": "giteaIssues.repositories",
-                "contents": "Refresh to get Gitea issues .\n[Refresh](command:giteaIssues.refreshIssues)"
+                "view": "giteaVscode.issues",
+                "contents": "Refresh to get Gitea issues .\n[Refresh](command:giteaVscode.refreshIssues)"
+            },
+            {
+                "view": "giteaVscode.notifications",
+                "contents": "Refresh to get Gitea notifications .\n[Refresh](command:giteaVscode.refreshNotifications)"
             }
         ],
         "viewsContainers": {
             "activitybar": [
                 {
-                    "id": "giteaIssues",
-                    "title": "Gitea-Issues",
-                    "icon": "media/issue.svg"
+                    "id": "giteaVscode",
+                    "title": "Gitea",
+                    "icon": "media/gitea_gray.svg"
                 }
             ]
         },
         "views": {
-            "giteaIssues": [
+            "giteaVscode": [
                 {
-                    "id": "giteaIssues.repositories",
-                    "name": "Repositories"
+                    "id": "giteaVscode.issues",
+                    "name": "Issues"
+                },
+                {
+                    "id": "giteaVscode.notifications",
+                    "name": "Notifications"
                 }
             ]
         },
         "commands": [
             {
-                "command": "giteaIssues.showIssue",
+                "command": "giteaVscode.showIssue",
                 "title": "Show"
             },
             {
-                "command": "giteaIssues.refreshIssues",
+                "command": "giteaVscode.refreshIssues",
                 "title": "Refresh",
                 "icon": {
                     "dark": "resources/dark/refresh.svg",
@@ -54,38 +64,71 @@
                 }
             },
             {
-                "command": "giteaIssues.openIssue",
+                "command": "giteaVscode.refreshNotifications",
+                "title": "Refresh",
+                "icon": {
+                    "dark": "resources/dark/refresh.svg",
+                    "light": "resources/light/refresh.svg"
+                }
+            },
+            {
+                "command": "giteaVscode.openIssue",
                 "title": "New issue"
             },
             {
-                "command": "giteaIssues.toogleIssue",
+                "command": "giteaVscode.toogleIssue",
                 "title": "Close/Reopen issue"
             },
             {
-                "command": "giteaIssues.openRepoInBrowser",
+                "command": "giteaVscode.openRepoInBrowser",
                 "title": "Open in browser"
+            },
+            {
+                "command": "giteaVscode.showNotification",
+                "title": "Show"
+            },
+            {
+                "command": "giteaVscode.openNotifInBrowser",
+                "title": "Open in browser"
+            },
+            {
+                "command": "giteaVscode.markNotifAsRead",
+                "title": "Mark as read"
             }
         ],
         "menus": {
             "view/title": [
                 {
-                    "command": "giteaIssues.refreshIssues",
+                    "command": "giteaVscode.refreshIssues",
                     "group": "navigation",
-                    "when": "view == giteaIssues.repositories"
+                    "when": "view == giteaVscode.issues"
+                },
+                {
+                    "command": "giteaVscode.refreshNotifications",
+                    "group": "navigation",
+                    "when": "view == giteaVscode.notifications"
                 }
             ],
             "view/item/context": [
                 {
-                    "command": "giteaIssues.openIssue",
-                    "when": "view == giteaIssues.repositories && viewItem == repository"
+                    "command": "giteaVscode.openIssue",
+                    "when": "view == giteaVscode.issues && viewItem == repository"
                 },
                 {
-                    "command": "giteaIssues.openRepoInBrowser",
-                    "when": "view == giteaIssues.repositories && viewItem == repository"
+                    "command": "giteaVscode.openRepoInBrowser",
+                    "when": "view == giteaVscode.issues && viewItem == repository"
                 },
                 {
-                    "command": "giteaIssues.openRepoInBrowser",
-                    "when": "view == giteaIssues.repositories && viewItem == issue"
+                    "command": "giteaVscode.openRepoInBrowser",
+                    "when": "view == giteaVscode.issues && viewItem == issue"
+                },
+                {
+                    "command": "giteaVscode.openNotifInBrowser",
+                    "when": "view == giteaVscode.notifications && viewItem == notification"
+                },
+                {
+                    "command": "giteaVscode.markNotifAsRead",
+                    "when": "view == giteaVscode.notifications && viewItem == notification"
                 }
             ]
         },
@@ -130,6 +173,30 @@
                     "default": true,
                     "description": "true=Stop when cannot verify SSL certificate, false=Continue any way. Like git config 'sslVerify'."
                 },
+                "gitea.autofetch_notifications": {
+                    "scope": "resource",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "true=autofetch"
+                },
+                "gitea.autofetch_notifications_period": {
+                    "scope": "resource",
+                    "type": "number",
+                    "default": 180000,
+                    "description": "Period in ms to autofetch notifications"
+                },
+                "gitea.max_page_request": {
+                    "scope": "resource",
+                    "type": "number",
+                    "default": 500,
+                    "description": "Maximum of pages requested to gitea"
+                },
+                "gitea.max_item_request": {
+                    "scope": "resource",
+                    "type": "number",
+                    "default": 50,
+                    "description": "Maximum of items requested to gitea"
+                },
                 "gitea.render": {
                     "scope": "resource",
                     "type": "string",
@@ -139,10 +206,10 @@
                         "html"
                     ],
                     "enumDescriptions": [
-                        "Render Issue in markdown format",
-                        "Render Issue in html format"
+                        "Render in markdown format",
+                        "Render in html format"
                     ],
-                    "description": "Choose render to show issues in editor"
+                    "description": "Choose render to show in editor"
                 },
                 "gitea.debug": {
                     "scope": "window",
@@ -172,6 +239,7 @@
     "dependencies": {
         "axios": "^0.27.2",
         "markdown-it": "^13.0.1",
+        "tslint": "^6.1.3",
         "vsce": "^2.15.0"
     },
     "repository": {
