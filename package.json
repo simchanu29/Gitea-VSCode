@@ -3,7 +3,7 @@
     "displayName": "Gitea-VSCode",
     "description": "Gitea Tracker for vs-code",
     "publisher": "simchanu29",
-    "version": "2.2.0-0.2.0",
+    "version": "2.2.0-0.3.0",
     "engines": {
         "vscode": "^1.70.0"
     },
@@ -73,7 +73,11 @@
             },
             {
                 "command": "giteaVscode.openIssue",
-                "title": "New issue"
+                "title": "New issue",
+                "icon": {
+                    "dark": "resources/dark/create.svg",
+                    "light": "resources/light/create.svg"
+                }
             },
             {
                 "command": "giteaVscode.toogleIssue",
@@ -112,6 +116,11 @@
             "view/item/context": [
                 {
                     "command": "giteaVscode.openIssue",
+                    "when": "view == giteaVscode.issues && viewItem == repository"
+                },
+                {
+                    "command": "giteaVscode.openIssue",
+                    "group": "inline",
                     "when": "view == giteaVscode.issues && viewItem == repository"
                 },
                 {

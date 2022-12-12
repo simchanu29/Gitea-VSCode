@@ -1,65 +1,108 @@
 import { Uri, TreeItem, TreeItemCollapsibleState, Command} from 'vscode';
 import * as path from "path";
-import { Comment } from "./comment";
+import { CommentTreeItem } from "./comment";
+import { IGitea } from "../gitea/IGiteaResponse";
 
-export class Notification extends TreeItem {
+export class NotificationTreeItem extends TreeItem {
     contextValue = 'notification';
-    original_notification? : Notification;
+    static openIssueAction: string = 'Issue opened';
+    static closeIssueAction: string = 'Issue closed';
+    static openPRAction: string = 'Pull request opened';
+    static closePRAction: string = 'Pull request closed';
+    static mergePRAction: string = 'Pull request merged';
 
-    static createNotification(element: Notification) {
-        let ret = new Notification(
-            element.label,
-            element.collapsibleState,
-            element.title,
-            element.type,
-            element.state,
-            element.notificationId,
-            element.html_url,
-            element.repo_url,
-            element.updated_at,
-            element.latest_comment_html_url//,
-            // element.attached_comment
-        );
-        ret.original_notification = element;
-        return ret;
+    static getNotifiedAction(subject: IGitea.NotificationSubject) : string
+    {
+        let notified_action = '';
+        // Si c'est vide on cherche à récupérer le body de l'issue ou de la PR associée
+        if(subject.type === "Issue")
+        {
+            if(subject.state === "open")
+            {
+                notified_action = NotificationTreeItem.openIssueAction;
+            }
+            else
+            {
+                notified_action = NotificationTreeItem.closeIssueAction;
+            }
+        } 
+        else if (subject.type === "Pull") 
+        {
+            if(subject.state === "merged")
+            {
+                notified_action = NotificationTreeItem.mergePRAction;
+            }
+            else if (subject.state === "open") 
+            {
+                notified_action = NotificationTreeItem.openPRAction;
+            }
+            else
+            {
+                notified_action = NotificationTreeItem.closePRAction;
+            }
+
+        }
+        return notified_action;
     }
+
+    static createFromGitea(elt: IGitea.NotificationThread) : NotificationTreeItem {
+        let notified_action = NotificationTreeItem.getNotifiedAction(elt.subject);
+        let comment_id: number = NaN;
+                
+        if(elt.subject.latest_comment_html_url !== '')
+        {
+            comment_id = parseInt(elt.subject.latest_comment_html_url.split('/').at(-1)!.split('-').at(-1)!);
+        }
+        
+        return new NotificationTreeItem(
+            `#${elt.id} - ${elt.subject.title}`,
+            TreeItemCollapsibleState.Collapsed,
+            elt,
+            notified_action,
+            comment_id
+        );
+    }
+
 
     constructor(
         public readonly label: string,
         public collapsibleState: TreeItemCollapsibleState,
-        public title: string,
-        public type: string,
-        public state: string,
-        public notificationId: number,
-        public html_url: string,
-        public repo_url: string,
-        public updated_at: string,
-        public latest_comment_html_url: string,
-        // public attached_comment: Comment
+        public content: IGitea.NotificationThread,
+
+        public notified_action: string,
+        public comment_id: number,
+        public attached_comment?: CommentTreeItem
 
     ) {
         super(label, collapsibleState);
         this.tooltip = `${this.label}`;
     }
 
+    getRessource(...ressource_path: string[]) : string {
+        return path.join(__filename, '..', '..', '..', 'resources', ...ressource_path);
+    }
+
     stateDependentIcon(light_str: string): string {
         if (this.label.length === 0){
-            return path.join(__filename, '..', '..', '..', 'resources', light_str, 'create.svg');
+            return this.getRessource(light_str, 'create.svg');
         }
 
-        if(this.type === "Pull" && this.state === "merged"){
-            return path.join(__filename, '..', '..', '..', 'resources', light_str, 'pull_merged.svg');
+        if(this.notified_action === NotificationTreeItem.mergePRAction){
+            return this.getRessource(light_str, 'pull_merged.svg');
         }
-        else if(this.type === "Issue" && this.state === "closed"){
-            return path.join(__filename, '..', '..', '..', 'resources', light_str, 'issue_closed.svg');
+        else if(this.notified_action === NotificationTreeItem.closeIssueAction){
+            return this.getRessource(light_str, 'issue_closed.svg');
         }
-        else if(this.type === "Issue" && this.state === "open"){
-            return path.join(__filename, '..', '..', '..', 'resources', light_str, 'issue_open.svg');
+        else if(this.notified_action === NotificationTreeItem.openIssueAction){
+            return this.getRessource(light_str, 'issue_open.svg');
         }
-        else if(this.type === "Pull" && this.state === "closed"){
+        else if(this.notified_action === NotificationTreeItem.closePRAction){
             
         }
-        return path.join(__filename, '..', '..', '..', 'resources', light_str, 'create.svg');
+        else if(this.notified_action === NotificationTreeItem.openPRAction){
+            
+        }
+        return this.getRessource(light_str, 'create.svg');
     }
 
     iconPath = {

@@ -1,38 +1,43 @@
 import * as vscode from 'vscode';
-import { Repository, Issue, IssueType } from '../nodes/issues';
-import { Comment } from '../nodes/comment';
+import { RepositoryTreeItem, IssueTreeItem, IssueTypeTreeItem } from '../nodes/issues';
+import { CommentTreeItem } from '../nodes/comment';
 import { Config } from '../config';
 import { GiteaConnector } from '../gitea/giteaConnector';
 import { Logger } from '../logger';
 import { config } from 'process';
+import { IGitea } from '../gitea/IGiteaResponse';
 
-export class RepositoryProvider implements vscode.TreeDataProvider<Repository | IssueType | Issue> {
-    private _onDidChangeTreeData: vscode.EventEmitter<Issue | undefined | null | void> = new vscode.EventEmitter<Issue | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<Issue | undefined | null | void> = this._onDidChangeTreeData.event;
+export class RepositoryProvider implements vscode.TreeDataProvider<RepositoryTreeItem | IssueTypeTreeItem | IssueTreeItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<IssueTreeItem | undefined | null | void> = new vscode.EventEmitter<IssueTreeItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<IssueTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
 
-    private repoList: Repository[] = []; 
+    private repoList: RepositoryTreeItem[] = []; 
 
     constructor() {
-        this.createRepositoryList();
+        this.createEmptyRepositoryList();
     }
 
-    getTreeItem(element: Repository | IssueType | Issue): vscode.TreeItem {
+    getTreeItem(element: RepositoryTreeItem | IssueTypeTreeItem | IssueTreeItem): vscode.TreeItem {
         return element;
     }
 
-    public createRepositoryList() : Repository[] {
+    public createEmptyRepositoryList() : RepositoryTreeItem[] {
         this.repoList = [];
 
         const config = new Config();
         config.repoList.forEach((repoName: string, index) => {
             const name = config.repoList[index];
-            const issue_url = config.apiUrl+'/repos/'+config.owner+'/'+name+'/issues';
-            const base_url = config.instanceURL.replace(/\/$/, "")+'/'+config.owner+'/'+name;
+            const owner = config.owner;
+            const issue_api_url = config.apiUrl+'/repos/'+owner+'/'+name+'/issues';
+            const base_url = config.instanceURL.replace(/\/$/, "")+'/'+owner+'/'+name;
 
-            this.repoList.push(new Repository(name, vscode.TreeItemCollapsibleState.Collapsed, issue_url, base_url,
-                new IssueType("open", vscode.TreeItemCollapsibleState.Collapsed, []), 
-                new IssueType("closed", vscode.TreeItemCollapsibleState.Collapsed, [])
+            this.repoList.push(new RepositoryTreeItem(name, 
+                vscode.TreeItemCollapsibleState.Collapsed, 
+                issue_api_url, base_url,
+                owner,
+                new IssueTypeTreeItem("open", vscode.TreeItemCollapsibleState.Collapsed, []), 
+                new IssueTypeTreeItem("closed", vscode.TreeItemCollapsibleState.Collapsed, [])
             ));
         });
 
@@ -41,21 +46,24 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
         return this.repoList;
     }
 
-    private async getCommentsAsync_(conn: GiteaConnector, url: string): Promise<Comment[]> {
+    private async getCommentsAsync_(conn: GiteaConnector, repo_owner: string, repo_name: string): Promise<CommentTreeItem[]> {
         const config = new Config();
-        const comments = [];
+        const comments: CommentTreeItem[] = [];
 
         let page = 1;
         while (page < config.max_page_request+1) {
+
+            // Get comments in page
             Logger.log( `Retrieve comments. page ${page}`);
-            const commentsOfPage = (await conn.getIssueComments(url, page)).data;    
+            const commentsOfPage: IGitea.Comment[] = await conn.getIssueComments(repo_owner, repo_name, page);                
             Logger.log( `${commentsOfPage.length} comments retrieved (page: ${page})`);
-            comments.push(...commentsOfPage);
-            commentsOfPage.forEach((c) => {
-                c.author = c.user.login;
-                c.label = `${c.author} - ${c.body.slice(0, 255)}`;
-                c.issueId = parseInt(c.issue_url.split('/').at(-1)) 
+
+            // Save
+            commentsOfPage.forEach((comment: any) => {
+                comments.push(CommentTreeItem.createFromGitea(comment));
             });
+
+            // Post process
             page++;
             if (commentsOfPage.length < config.max_item_request) { // TODO move this limit to config
                 break;
@@ -65,26 +73,24 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
         return comments;
     }
 
-
-    private async getIssuesAsync_(conn: GiteaConnector, state: string, url: string): Promise<Issue[]> {
-        const issues = [];
+    private async getIssuesAsync_(conn: GiteaConnector, repo_owner: string, repo_name: string, state: string): Promise<IssueTreeItem[]> {
         const config = new Config();
+        const issues: IssueTreeItem[] = [];
 
         let page = 1;
         while (page < config.max_page_request+1) {
+
+            // Get issues in page
             Logger.log( `Retrieve issues. State: ${state} - page ${page}`);
-            const issuesOfPage = (await conn.getIssues(url, state, page)).data;    
+            const issuesOfPage: IGitea.Issue[] = await conn.getIssues(repo_owner, repo_name, state, page);    
             Logger.log( `${issuesOfPage.length} issues retrieved (state: ${state} - page: ${page})`);
-            issues.push(...issuesOfPage);
-            issuesOfPage.forEach((c) => {
-                c.label = `#${c.number} - ${c.title}`;
-                c.issueId = c.number;
-                c.assignee = c.assignee === null ? 'Nobody' : c.assignee.login;
-                c.assignees = c.assignees;
-                c.creator = c.user.login;
-                c.repo_url = c.html_url.split('/').slice(0, -2).join('/')
-                c.id = c.id.toString();
+
+            // Save
+            issuesOfPage.forEach((c: IGitea.Issue) => {
+                issues.push(IssueTreeItem.createFromGitea(c));
             });
+
+            // Post process
             page++;
             if (issuesOfPage.length < 50) { // TODO move this limit to config
                 break;
@@ -94,74 +100,72 @@ export class RepositoryProvider implements vscode.TreeDataProvider<Repository | 
         return issues;
     }
 
-    private populate_command_on_click(node: IssueType, issues: Issue[], comments: Comment[]) {
+    private populate_issues(node: IssueTypeTreeItem, issues: IssueTreeItem[], comments: CommentTreeItem[]) {
        
-        issues.forEach((element: Issue) => {
-            element.comments = [];
-            comments.forEach((comment: Comment) => {
-                if (comment.issueId === element.issueId) {
-                    element.comments.push(comment);
-                }
-            })
+        issues.forEach((issue: IssueTreeItem) => {
+            issue.comments = []; // reset
 
-            let issue = Issue.createIssue(element);
+            comments.forEach((comment: CommentTreeItem) => {
+                if (comment.issue_id === issue.content.number) {
+                    issue.comments.push(comment);
+                }
+            });
 
             issue.command = {
                 command: 'giteaVscode.showIssue',
                 title: '',
-                arguments: [element],
+                arguments: [issue],
             };
-            issue.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-            issue.contextValue = 'issue';
 
             // Push to issueList
             node.issues.push(issue);
 
-            Logger.debug('Issue processed', { 'id': issue.issueId, 'state': issue.state })
+            Logger.debug('Issue processed', { 'id': issue.content.number, 'state': issue.content.state });
         });
     }
 
-    public async getIssuesAsync(repo: Repository) : Promise<Repository> {
+    public async getIssuesAsync(repo: RepositoryTreeItem) : Promise<RepositoryTreeItem> {
         const config = new Config();
-        const giteaConnector = new GiteaConnector(config.token, config.sslVerify);
+        const giteaConnector = new GiteaConnector(config.apiUrl, config.token, config.sslVerify);
 
-        let issuesOpen = (await this.getIssuesAsync_(giteaConnector, "open", repo.issue_url));
-        let issuesClosed = (await this.getIssuesAsync_(giteaConnector, "closed", repo.issue_url));
-        let comments = (await this.getCommentsAsync_(giteaConnector, repo.issue_url));
+        let issuesOpen: IssueTreeItem[] = (await this.getIssuesAsync_(giteaConnector, repo.owner, repo.label, "open"));
+        let issuesClosed: IssueTreeItem[] = (await this.getIssuesAsync_(giteaConnector, repo.owner, repo.label, "closed"));
+        let comments: CommentTreeItem[] = (await this.getCommentsAsync_(giteaConnector, repo.owner, repo.label));
 
-        this.populate_command_on_click(repo.issuesOpen, issuesOpen, comments);
-        this.populate_command_on_click(repo.issuesClosed, issuesClosed, comments);
+        this.populate_issues(repo.issuesOpen, issuesOpen, comments);
+        this.populate_issues(repo.issuesClosed, issuesClosed, comments);
 
         return repo;
     }
 
 
     public async refresh() {
-        this.createRepositoryList();
+        this.createEmptyRepositoryList();
         for (let i = 0; i < this.repoList.length; i++) {
             this.repoList[i] = (await this.getIssuesAsync(this.repoList[i]));
         }
+
         this._onDidChangeTreeData.fire();
     }
 
-    getChildren(element?: Repository | IssueType | Issue): vscode.ProviderResult<any[]> {
+    getChildren(element?: RepositoryTreeItem | IssueTypeTreeItem | IssueTreeItem): vscode.ProviderResult<any[]> {
         
-        if (element instanceof Repository){
+        if (element instanceof RepositoryTreeItem){
             let childItems: vscode.TreeItem[] = [
                 element.issuesOpen,
                 element.issuesClosed
-            ]
+            ];
             return Promise.resolve(childItems);
         }
-        else if (element instanceof IssueType){
+        else if (element instanceof IssueTypeTreeItem){
             return Promise.resolve(element.issues);
         }
-        else if (element instanceof Issue){
+        else if (element instanceof IssueTreeItem){
             let childItems: vscode.TreeItem[] = [
-                new vscode.TreeItem('Assignee - ' + element.assignee, vscode.TreeItemCollapsibleState.None),
-                new vscode.TreeItem('State - ' + element.state   , vscode.TreeItemCollapsibleState.None),
-                new vscode.TreeItem('ID - ' + element.issueId , vscode.TreeItemCollapsibleState.None),
-                new vscode.TreeItem('From - ' + element.creator , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('Assignee - ' + element.content.assignee   , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('State - '    + element.content.state      , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('ID - '       + element.content.number     , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('From - '     + element.content.user.login , vscode.TreeItemCollapsibleState.None),
             ];
             return Promise.resolve(childItems);
         }

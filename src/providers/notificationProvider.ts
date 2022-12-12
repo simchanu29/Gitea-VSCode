@@ -1,41 +1,78 @@
 import * as vscode from 'vscode';
-import { Notification } from '../nodes/notifications';
+import { NotificationTreeItem } from '../nodes/notifications';
 import { Config } from '../config';
 import { GiteaConnector } from '../gitea/giteaConnector';
 import { Logger } from '../logger';
+import { CommentTreeItem } from '../nodes/comment';
+import { IssueTreeItem } from '../nodes/issues';
+import { IGitea } from '../gitea/IGiteaResponse';
+import { isBigIntLiteral } from 'typescript';
 
-export class NotificationsProvider implements vscode.TreeDataProvider<Notification> {
-    private _onDidChangeTreeData: vscode.EventEmitter<Notification | undefined | null | void> = new vscode.EventEmitter<Notification | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<Notification | undefined | null | void> = this._onDidChangeTreeData.event;
+export class NotificationsProvider implements vscode.TreeDataProvider<NotificationTreeItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<NotificationTreeItem | undefined | null | void> = new vscode.EventEmitter<NotificationTreeItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<NotificationTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private notificationsList: Notification[] = [];
+    private notificationsList: NotificationTreeItem[] = [];
 
-    getTreeItem(element: Notification): vscode.TreeItem {
+    getTreeItem(element: NotificationTreeItem): vscode.TreeItem {
         return element;
     }
 
-    private async getNotificationsAsync_(conn: GiteaConnector, url: string): Promise<Notification[]> {
-        const notifications = [];
+    private async getNotificationsAsync_(conn: GiteaConnector): Promise<NotificationTreeItem[]> {
+        const notifications: NotificationTreeItem[] = [];
         const config = new Config();
-
-        let page = 1;
+                let page = 1;
         while (page < config.max_page_request+1) {
             Logger.log( `Retrieve notifications. page ${page}`);
-            const notifsOfPage = (await conn.getNotifications(url, page)).data;    
+            const notifsOfPage = await conn.getNotifications(page);    
             Logger.log( `${notifsOfPage.length} notifications retrieved (page: ${page})`);
-            notifications.push(...notifsOfPage);
-            notifsOfPage.forEach((c) => {              
-                c.title = c.subject.title;
-                c.type = c.subject.type;
-                c.state = c.subject.state;
-                c.label = `#${c.id} - ${c.title}`;
-                c.notificationId = c.id;
-                c.repo_url = c.repository.html_url;
-                c.html_url = c.subject.html_url;
+            
+            // setup notifs
+            let notifsOfPageTreeItem: NotificationTreeItem[] = [];
+            notifsOfPage.forEach((notif : IGitea.NotificationThread) => {
+                notifsOfPageTreeItem.push(NotificationTreeItem.createFromGitea(notif));
             });
-            // for (let notif in notifsOfPage) {
-            //     notif.comment = (await conn.getComment(config.apiUrl, notif.owner, notif.repo))
-            // }
+
+            // Import last comment
+            await Promise.all(notifsOfPageTreeItem.map(async (notif : NotificationTreeItem) => {
+                if (!isNaN(notif.comment_id)){
+                    notif.attached_comment = CommentTreeItem.createFromGitea(await conn.getComment(
+                        notif.content.repository.owner.login, 
+                        notif.content.repository.name, 
+                        notif.comment_id
+                    ));
+                }
+                else
+                {
+                    // get issue
+                    const issue: IGitea.Issue = await conn.getIssue(
+                        notif.content.repository.owner.login, 
+                        notif.content.repository.name, 
+                        parseInt(notif.content.subject.html_url.split('/').at(-1)!)
+                    );
+                    const new_comment: IGitea.Comment = {
+                        body: issue.body,
+                        created_at: issue.created_at,
+                        html_url: issue.html_url,
+                        issue_url: issue.html_url,
+                        original_author: issue.user.login,
+                        original_author_id: issue.user.id,
+                        updated_at: issue.updated_at,
+                        user: issue.user
+                    };
+
+                    notif.attached_comment = new CommentTreeItem(
+                        "Issue state change", vscode.TreeItemCollapsibleState.Collapsed, 
+                        new_comment,
+                        issue.id,
+                        issue.html_url.split('/').slice(0, -1).join('/')
+                    );
+                }
+            }));
+            
+            // save notifs
+            notifications.push(...notifsOfPageTreeItem);
+
             page++;
             if (notifsOfPage.length < config.max_item_request) { // TODO move this limit to config
                 break;
@@ -45,37 +82,28 @@ export class NotificationsProvider implements vscode.TreeDataProvider<Notificati
         return notifications;
     }
 
-    private populate_command_on_click(notifications: Notification[]) {
-        let notificationsList: Notification[] = [];
-
-        notifications.forEach((element: Notification) => {
-            let notification = Notification.createNotification(element);
-
+    private populate_command_on_click(notifications: NotificationTreeItem[]) {
+        
+        notifications.forEach((notification: NotificationTreeItem) => {
             // Add on the fly the command
             notification.command = {
                 command: 'giteaVscode.showNotification',
                 title: '',
-                arguments: [element],
+                arguments: [notification],
             };
-            notification.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-            notification.contextValue = 'notification';
-
-            // Push to issueList
-            notificationsList.push(notification);
-
-            Logger.debug('Notification processed', { 'id': notification.notificationId});
+            Logger.debug('Notification processed', { 'id': notification.content.id});
         });
 
-        return notificationsList;
+        return notifications;
     }
 
-    public async getNotificationsAsync() : Promise<Notification[]> {
+    public async getNotificationsAsync() : Promise<NotificationTreeItem[]> {
         const config = new Config();
-        const giteaConnector = new GiteaConnector(config.token, config.sslVerify);
+        const giteaConnector = new GiteaConnector(config.apiUrl, config.token, config.sslVerify);
         
-        let notifications = (await this.getNotificationsAsync_(giteaConnector, config.apiUrl+"/notifications"));
+        let notifications = (await this.getNotificationsAsync_(giteaConnector));
 
-        return this.populate_command_on_click(notifications); // TODO il doit y avoir moyen de simplifier le process
+        return this.populate_command_on_click(notifications);
     }
 
     public async refresh() {
@@ -102,28 +130,28 @@ export class NotificationsProvider implements vscode.TreeDataProvider<Notificati
         }
     }
 
-    public async markAsRead(notification: Notification) {
+    public async markAsRead(notification: NotificationTreeItem) {
         const config = new Config();
-        const giteaConnector = new GiteaConnector(config.token, config.sslVerify);
+        const giteaConnector = new GiteaConnector(config.apiUrl, config.token, config.sslVerify);
 
-        await giteaConnector.setNotificationState(config.apiUrl, notification.notificationId, "read");
+        await giteaConnector.setNotificationState(notification.content.id, "read");
         
         // Remove read notification
         this.notificationsList.splice(
             this.notificationsList.findIndex(
-                elt => elt.notificationId === notification.notificationId
+                elt => elt.content.id === notification.content.id
             ), 1
         );
 
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    getChildren(element?: Notification): vscode.ProviderResult<any[]> {
+    getChildren(element?: NotificationTreeItem): vscode.ProviderResult<any[]> {
         if(element !== undefined){
             let childItems: vscode.TreeItem[] = [
-                new vscode.TreeItem('Type - ' + element.type   , vscode.TreeItemCollapsibleState.None),
-                new vscode.TreeItem('ID - ' + element.notificationId , vscode.TreeItemCollapsibleState.None),
-                new vscode.TreeItem('Repository - ' + element.repo_url , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('Type - ' + element.content.subject.type   , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('ID - ' + element.content.id , vscode.TreeItemCollapsibleState.None),
+                new vscode.TreeItem('Repository - ' + element.content.repository.html_url , vscode.TreeItemCollapsibleState.None),
             ];
             return Promise.resolve(childItems);
         }

@@ -1,17 +1,17 @@
-import { Issue } from './nodes/issues';
-import { Comment } from './nodes/comment';
+import { IssueTreeItem } from './nodes/issues';
+import { CommentTreeItem } from './nodes/comment';
 import MarkdownIt = require('markdown-it');
 import { NotEmittedStatement } from 'typescript';
-import { Notification } from './nodes/notifications';
+import { NotificationTreeItem } from './nodes/notifications';
 
-export function getBadges(issue: Issue) {
-    return issue.labels.map(label => {
+export function getBadges(issue: IssueTreeItem) {
+    return issue.content.labels.map(label => {
         return '![' + label.name + '](https://img.shields.io/badge/' + label.name + '-' + label.color + '.svg)'
     }).join(', ');
 }
 
-export function getAssignee(issue: Issue) {
-    return issue.assignees === null ? "None" : issue.assignees.map(assignee => { return assignee.login }).join(', ');
+export function getAssignee(issue: IssueTreeItem) {
+    return issue.content.assignees === null ? "None" : issue.content.assignees.map(assignee => { return assignee.login; }).join(', ');
 }
 
 function getStyle(): string {
@@ -46,15 +46,17 @@ function getStyle(): string {
     ` 
 }
 
-export function markdown_render(md: string, elt: Issue | Notification): string {
+export function markdown_render(md: string, elt: IssueTreeItem | NotificationTreeItem | CommentTreeItem): string {
     let markdownIt = new MarkdownIt();
 
     let html: string = ``;
-    if(elt.hasOwnProperty("issueId")){
-        html = markdownIt.render(md
-            .replace('![image](/attachments/', "![image]("+elt.repo_url+"/attachments/")
-        );
-    } else if (elt.hasOwnProperty("notificationId")) {
+    if(elt.hasOwnProperty("repo_url"))
+    {
+        // html = markdownIt.render(md
+        //     .replace('![image](/attachments/', "![image]("+elt.repo_url+"/attachments/")
+        // );
+        html = markdownIt.render(md);
+    } else {
         html = markdownIt.render(md);
     }
 
@@ -66,7 +68,7 @@ export function markdown_render(md: string, elt: Issue | Notification): string {
     return html;
 }
 
-export function showIssueHTML(issue: Issue) {
+export function showIssueHTML(issue: IssueTreeItem) {
     let first_post = `
         <div class="title-container">
             <h1>{{label}}</h1>
@@ -96,18 +98,18 @@ export function showIssueHTML(issue: Issue) {
         </div>
     `
         .replace('{{label}}', issue.label)
-        .replaceAll('{{author}}', issue.creator)
-        .replace('{{state}}', issue.state)
+        .replaceAll('{{author}}', issue.content.user.login)
+        .replace('{{state}}', issue.content.state)
         .replace('{{assignees}}', getAssignee(issue))
         .replace('{{labels}}', markdown_render(": " + getBadges(issue), issue))
-        .replace('{{html_url}}', issue.html_url)
-        .replace('{{date}}', new Date(issue.created_at).toLocaleString())
+        .replace('{{html_url}}', issue.content.html_url)
+        .replace('{{date}}', new Date(issue.content.created_at).toLocaleString())
         .replace('{{label}}', issue.label)
-        .replace('{{description}}', markdown_render(issue.body, issue));
+        .replace('{{description}}', markdown_render(issue.content.body, issue));
 
     
     let posts = ``;
-    issue.comments.forEach((comment: Comment) => {
+    issue.comments.forEach((comment: CommentTreeItem) => {
         let post = `     
         <div class="post-container">
             <div class="post-header">
@@ -118,9 +120,9 @@ export function showIssueHTML(issue: Issue) {
             </div>
         </div>
         `        
-        .replace('{{author}}', comment.author)
-        .replace('{{date}}', new Date(comment.created_at).toLocaleString())
-        .replace('{{content}}', markdown_render(comment.body, issue));
+        .replace('{{author}}', comment.content.user.login)
+        .replace('{{date}}', new Date(comment.content.created_at).toLocaleString())
+        .replace('{{content}}', markdown_render(comment.content.body, issue));
 
         posts = posts + post;
     });
@@ -129,7 +131,7 @@ export function showIssueHTML(issue: Issue) {
            '<body>' + first_post + posts + '</body>';
 }
 
-export function showIssueMD(issue: Issue) {
+export function showIssueMD(issue: IssueTreeItem) {
     let md_labels = getBadges(issue);
     let assignees = getAssignee(issue);
 
@@ -139,9 +141,9 @@ export function showIssueMD(issue: Issue) {
 {{description}}
 
 `
-    .replace('{{title}}', issue.title)
-    .replace('{{id}}', issue.issueId.toString())
-    .replace('{{description}}', issue.body)
+    .replace('{{title}}', issue.content.title)
+    .replace('{{id}}', issue.content.id.toString())
+    .replace('{{description}}', issue.content.body);
 
     let footer = 
 `---
@@ -151,13 +153,13 @@ export function showIssueMD(issue: Issue) {
 * Labels: {{labels}}
 * [See in browser]({{html_url}})
 `
-    .replace('{{state}}', issue.state)
+    .replace('{{state}}', issue.content.state)
     .replace('{{assignee}}', assignees)
     .replace('{{labels}}', md_labels)
-    .replace('{{html_url}}', issue.html_url)
+    .replace('{{html_url}}', issue.content.html_url);
 
     let result = md;
-    issue.comments.forEach((comment: Comment) => {
+    issue.comments.forEach((comment: CommentTreeItem) => {
         result = result + 
 `---
 
@@ -166,19 +168,29 @@ __{{author}}__ - *{{date}}*
 {{content}}
 
 `
-        .replace('{{author}}', comment.author)
-        .replace('{{date}}', new Date(comment.created_at).toLocaleString())
-        .replace('{{content}}', comment.body)
-        .replace('![image](/attachments/', "![image]("+issue.repo_url+"/attachments/")
+        .replace('{{author}}', comment.content.user.login)
+        .replace('{{date}}', new Date(comment.content.created_at).toLocaleString())
+        .replace('{{content}}', comment.content.body)
+        .replace('![image](/attachments/', "![image]("+issue.repo_url+"/attachments/");
     });
-    result = result + footer
+    result = result + footer;
 
-    return result
+    return result;
 }
 
 
-export function showNotificationHTML(notification: Notification) {
-    let post = `
+export function showNotificationHTML(notification: NotificationTreeItem) {
+    // TODO mettre cette partie dans la création de la notif/commentaire ?
+    let action_str = "";
+    if (!isNaN(notification.comment_id))
+    {
+        action_str = "Comment";
+    }
+    else {
+        action_str = notification.notified_action;
+    }
+    
+    let post: string = `
         <div class="title-container">
             <h1>{{label}}</h1>
             <table>
@@ -194,22 +206,43 @@ export function showNotificationHTML(notification: Notification) {
                 <tr>
                     <td><b>Repository</b></td><td>: <a href={{repo_url}}>{{repo_url}}</a></td>
                 </tr>
+                <tr>
+                    <td><b>Action</b></td><td>: {{action}}</td>
+                </tr>
             </table>
             <a href={{html_url}}>View in browser</a>
         </div>
     `
         .replace('{{label}}', notification.label)    
-        .replace('{{title}}', notification.title)
-        .replace('{{type}}', notification.type)
-        .replace('{{state}}', notification.state)
-        .replaceAll('{{repo_url}}', notification.repo_url)
-        .replace('{{html_url}}', notification.html_url);
+        .replace('{{title}}', notification.content.subject.title)
+        .replace('{{type}}', notification.content.subject.type)
+        .replace('{{action}}', action_str)
+        .replace('{{state}}', notification.content.subject.state)
+        .replaceAll('{{repo_url}}', notification.content.repository.html_url)
+        .replace('{{html_url}}', notification.content.url);
 
-    return '<header>' + getStyle() + '</header>' + 
-           '<body>'   + post       + '</body>';
+    let comment: string = ``;
+    // if (!isNaN(notification.comment_id)) {
+        comment = `
+        <div class="post-container">
+            <div class="post-header">
+                <b>{{author}}</b> - <i>{{date}}</i>
+            </div>
+            <div class="post-body">
+                {{content}}
+            </div>
+        </div>
+        `        
+        .replace('{{author}}', notification.attached_comment!.content.user.login)
+        .replace('{{date}}', new Date(notification.attached_comment!.content.created_at).toLocaleString())
+        .replace('{{content}}', markdown_render(notification.attached_comment!.content.body, notification));
+    // }
+
+    return '<header>' + getStyle()     + '</header>' + 
+           '<body>'   + post + comment + '</body>';
 }
 
-export function showNotificationMD(notification: Notification) {
+export function showNotificationMD(notification: NotificationTreeItem) {
     let md =  
 `# {{label}}
 
@@ -219,16 +252,16 @@ export function showNotificationMD(notification: Notification) {
 
 `
     .replace('{{label}}', notification.label)
-    .replace('{{id}}', notification.notificationId.toString())
-    .replace('{{type}}', notification.type)
-    .replace('{{state}}', notification.state)
-    .replace('{{repo_url}}', notification.repo_url);
+    .replace('{{id}}', notification.content.id.toString())
+    .replace('{{type}}', notification.content.subject.type)
+    .replace('{{state}}', notification.content.subject.type)
+    .replace('{{repo_url}}', notification.content.repository.html_url);
 
     let footer = 
 `---
 * [See in browser]({{html_url}})
 `
-    .replace('{{html_url}}', notification.html_url);
+    .replace('{{html_url}}', notification.content.url);
 
     return md + footer;
 }
