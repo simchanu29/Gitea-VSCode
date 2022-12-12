@@ -82,13 +82,19 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Removed:
 - versions folder
 
-## [Unreleased]
-
 [1]: https://github.com/IJustDev/Gitea-VSCode/issues/1
 [2]: https://github.com/IJustDev/Gitea-VSCode/issues/2
 [21]: https://github.com/IJustDev/Gitea-VSCode/issues/21
 
-Update by Simon CHANU : 
+## [0.2.0-0.1.0]
+
+### Modified
 - Change architecture to handle multiple repositories
 - Open in browser
 - New issue
+
+## [0.2.0-0.3.0]
+
+### Modified
+- Refactor gitea connector
+- add description in notifications
