@@ -56,6 +56,10 @@
                 "title": "Show"
             },
             {
+                "command": "giteaVscode.showNotification",
+                "title": "Show"
+            },
+            {
                 "command": "giteaVscode.refreshIssues",
                 "title": "Refresh",
                 "icon": {
@@ -72,7 +76,7 @@
                 }
             },
             {
-                "command": "giteaVscode.openIssue",
+                "command": "giteaVscode.newIssue",
                 "title": "New issue",
                 "icon": {
                     "dark": "resources/dark/create.svg",
@@ -84,13 +88,22 @@
                 "title": "Close/Reopen issue"
             },
             {
+                "command": "giteaVscode.closeIssue",
+                "title": "Close issue"
+            },
+            {
+                "command": "giteaVscode.openIssue",
+                "title": "Reopen issue"
+            },
+            {
+                "command": "giteaVscode.commentIssue",
+                "title": "Add new comment on issue"
+            },
+            {
                 "command": "giteaVscode.openRepoInBrowser",
                 "title": "Open in browser"
             },
-            {
-                "command": "giteaVscode.showNotification",
-                "title": "Show"
-            },
+            
             {
                 "command": "giteaVscode.openNotifInBrowser",
                 "title": "Open in browser"
@@ -114,15 +127,6 @@
                 }
             ],
             "view/item/context": [
-                {
-                    "command": "giteaVscode.openIssue",
-                    "when": "view == giteaVscode.issues && viewItem == repository"
-                },
-                {
-                    "command": "giteaVscode.openIssue",
-                    "group": "inline",
-                    "when": "view == giteaVscode.issues && viewItem == repository"
-                },
                 {
                     "command": "giteaVscode.openRepoInBrowser",
                     "when": "view == giteaVscode.issues && viewItem == repository"
@@ -161,20 +165,14 @@
                     "description": "The remote gitea instance's url. Append base url to this string eg. http://localhost:8080 or http://localhost/gitea",
                     "pattern": "^(https|http)://"
                 },
-                "gitea.owner": {
-                    "scope": "resource",
-                    "type": "string",
-                    "default": "",
-                    "description": "The username for the repository."
-                },
-                "gitea.repoList": {
+                "gitea.orgList": {
                     "type": "array",
                     "scope": "resource",
                     "items": {
                         "type": "string"
                     },
                     "default": [],
-                    "description": "The list of repository names."
+                    "description": "The list of organization names."
                 },
                 "gitea.sslVerify": {
                     "scope": "resource",
@@ -246,6 +244,7 @@
         "typescript": "^4.9.3"
     },
     "dependencies": {
+        "@vscode/webview-ui-toolkit": "^1.2.0",
         "axios": "^0.27.2",
         "markdown-it": "^13.0.1",
         "tslint": "^6.1.3",

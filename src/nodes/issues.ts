@@ -4,8 +4,39 @@ import { CommentTreeItem } from "./comment";
 import { IGitea } from "../gitea/IGiteaResponse";
 import { GiteaConnector } from '../gitea/giteaConnector';
 
+export class OwnerTreeItem extends TreeItem {
+    contextValue = 'repository';
+
+    constructor(
+        public readonly label: string,
+        public name: string,
+        public collapsibleState: TreeItemCollapsibleState,
+        public base_url: string,
+        public type: string, ///< user or org
+        public repositories: RepositoryTreeItem[]
+    ) {
+        super(label, collapsibleState);
+        this.tooltip = `${this.label} (${this.base_url})`;
+    }
+}
+
 export class RepositoryTreeItem extends TreeItem {
     contextValue = 'repository';
+
+    static createFromGitea(repo: IGitea.Repository){
+        // const repo_url = repo.html_url.split('/').slice(0, -2).join('/'); // On enlève /issues/#? de l'url 
+        
+        let new_repo = new RepositoryTreeItem(
+            repo.name,
+            TreeItemCollapsibleState.Collapsed,
+            repo.html_url+"/issues",
+            repo.html_url,
+            repo.owner.login,
+            new IssueTypeTreeItem("open", TreeItemCollapsibleState.Collapsed, []), 
+            new IssueTypeTreeItem("closed", TreeItemCollapsibleState.Collapsed, [])
+        );
+        return new_repo;
+    }
 
     constructor(
         public readonly label: string,
@@ -40,9 +71,9 @@ export class IssueTypeTreeItem extends TreeItem {
 
     public getIcon(): string {
         if(this.label === "closed") {
-            return path.join(__filename, '..', '..', '..', 'resources', 'light', 'issue_closed.svg');
+            return path.join(__filename, ...'../../../resources/light/issue_closed.svg'.split('/'));
         } else {
-            return path.join(__filename, '..', '..', '..', 'resources', 'light', 'issue_open.svg');
+            return path.join(__filename, ...'../../../resources/light/issue_open.svg'.split('/'));
         }
     }
 }

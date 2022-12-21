@@ -1,172 +1,114 @@
 import * as vscode from 'vscode';
 
-import { markdown_render, showIssueHTML, showIssueMD, showNotificationHTML, showNotificationMD } from './template.issues';
 import { IssueTreeItem, RepositoryTreeItem } from './nodes/issues';
 import { NotificationTreeItem } from './nodes/notifications';
 import { Config } from './config';
 import { Logger } from './logger';
 import { RepositoryProvider } from './providers/issuesProvider';
-import MarkdownIt = require('markdown-it');
-import { utimesSync } from 'fs';
 import { NotificationsProvider } from './providers/notificationProvider';
-import { GiteaWebView } from './webview';
+import { GiteaWebViewPanel, getWebviewOptions } from './webview/webview';
 
 //* Issues  
 
-export function showIssueInWebPanel(issue: IssueTreeItem) {
-    const panel = vscode.window.createWebviewPanel(
-        'issue',
-        issue.label,
-        vscode.ViewColumn.Active,
-        {
-            enableScripts: true
-        }
-    );
-
-    const config = new Config();
-
-    if(config.render === 'html') {
-        panel.webview.html = showIssueHTML(issue);
-    } else {
-        let markdownIt = new MarkdownIt();
-        panel.webview.html = markdown_render(showIssueMD(issue), issue);
-    }
-
-    return panel;
-}
-
 // TODO un panel d'affichage qui s'active
-// - Quand on veut afficher une issue ou la modifier (envoyer une commentaire)
-// - Quand on veut créer une issue
-// - Quand on veut afficher une notification
-// - Quand on veut afficher une issue liée à une notification
+// - [x] Quand on veut afficher une issue ou la modifier (envoyer une commentaire)
+// - [ ] Quand on veut créer une issue
+// - [ ] Utiliser le générateur de markdown de gitea
+// - [x] Quand on veut afficher une notification
+// - [x] Quand on veut afficher une issue liée à une notification
 
-export function activate_issues(context: vscode.ExtensionContext) : RepositoryProvider {
-    // Array of issues; This is used to determine whether a issue is already open
-    // in a tab or not.
-    let openIssues: Array<IssueTreeItem> = [];
-    let openIssuesWebpanels: Array<vscode.WebviewPanel> = [];
-    const repositoryProvider = new RepositoryProvider();
-    vscode.window.registerTreeDataProvider("giteaVscode.issues", repositoryProvider);        
-
-    vscode.commands.registerCommand('giteaVscode.showIssue', (issue: IssueTreeItem) => {
-        const issueOpenable = openIssues.find((c) => c.content.id === issue.content.id) === undefined;
-        if (issueOpenable) {
-            const panel = showIssueInWebPanel(issue);
-            openIssues.push(issue);
-            openIssuesWebpanels.push(panel);
-            panel.onDidDispose((event) => {
-                openIssues.splice(openIssues.indexOf(issue), 1);
-                openIssuesWebpanels.splice(openIssuesWebpanels.indexOf(panel), 1);
-            });
-        } 
-        else {
-            const openPanel = openIssuesWebpanels.find((c) => c.title === issue.label);
-            openPanel?.reveal();
-        }
-    });
-
-    vscode.commands.registerCommand('giteaVscode.refreshIssues', () => {
-        repositoryProvider.refresh();
-    });
-
-    vscode.commands.registerCommand('giteaVscode.openIssue', (repo: RepositoryTreeItem) => {
-        vscode.env.openExternal(vscode.Uri.parse(repo.base_url+'/issues/new'));
-    });
-
-    // Unused
-    vscode.commands.registerCommand('giteaVscode.toogleIssue', (issue: IssueTreeItem) => {
-        Logger.log("reopen or close issue " + issue.content.id);
-        vscode.env.openExternal(vscode.Uri.parse(issue.content.url)); // TODO use API with a web view
-    });
-
-    vscode.commands.registerCommand('giteaVscode.openRepoInBrowser', (elt: RepositoryTreeItem | IssueTreeItem) => {
-        if (elt instanceof RepositoryTreeItem) {
-            vscode.env.openExternal(vscode.Uri.parse(elt.issue_url+'/issues'));
-        }
-        else if (elt instanceof IssueTreeItem) {
-            vscode.env.openExternal(vscode.Uri.parse(elt.content.html_url));
-        }
-    });
-
-    return repositoryProvider;
-}
-
-//* Notifications
-
-export function showNotificationInWebPanel(notification: NotificationTreeItem) {
-    const panel = vscode.window.createWebviewPanel(
-        'notification',
-        notification.label,
-        vscode.ViewColumn.Active,
-        {
-            enableScripts: true
-        }
-    );
-
-    const config = new Config();
-
-    if(config.render === 'html') {
-        panel.webview.html = showNotificationHTML(notification);
-    } else {
-        panel.webview.html = markdown_render(showNotificationMD(notification), notification);
-    }
-
-    return panel;
-}
-
-export function activate_notifications(context: vscode.ExtensionContext) : NotificationsProvider {
-    let openNotifications: Array<NotificationTreeItem> = [];
-    let openNotificationsWebpanels: Array<vscode.WebviewPanel> = [];
-    const notificationsProvider = new NotificationsProvider();
-    vscode.window.registerTreeDataProvider("giteaVscode.notifications", notificationsProvider);        
-
-    vscode.commands.registerCommand('giteaVscode.showNotification', (notification: NotificationTreeItem) => {
-        const notificationOpenable = openNotifications.find((c) => c.content.id === notification.content.id) === undefined;
-        if (notificationOpenable) {
-            const panel = showNotificationInWebPanel(notification);
-            openNotifications.push(notification);
-            openNotificationsWebpanels.push(panel);
-            panel.onDidDispose((event) => {
-                openNotifications.splice(openNotifications.indexOf(notification), 1);
-                openNotificationsWebpanels.splice(openNotificationsWebpanels.indexOf(panel), 1);
-            });
-        } 
-        else {
-            const openPanel = openNotificationsWebpanels.find((c) => c.title === notification.label);
-            openPanel?.reveal();
-        }
-
-    });
-
-    vscode.commands.registerCommand('giteaVscode.refreshNotifications', () => {
-        notificationsProvider.refresh();
-    });
-
-    vscode.commands.registerCommand('giteaVscode.openNotifInBrowser', (elt: NotificationTreeItem) => {
-        vscode.env.openExternal(vscode.Uri.parse(elt.content.url));
-    });
-
-    vscode.commands.registerCommand('giteaVscode.markNotifAsRead', (elt: NotificationTreeItem) => {
-        notificationsProvider.markAsRead(elt);
-    });
-
-    return notificationsProvider;
-}
 
 export async function activate(context: vscode.ExtensionContext) {
     Logger.init();
     Logger.log('Starting Gitea ...');
-
-    const repositoryProvider = activate_issues(context);
-    const notificationsProvider = activate_notifications(context);
     
-    repositoryProvider.refresh();
-    await notificationsProvider.refresh();
+    const issuesProvider = new RepositoryProvider();
+    const notificationsProvider = new NotificationsProvider();
 
-    // const testview = new GiteaWebView();
+    // Issues
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider("giteaVscode.issues", issuesProvider),
+        vscode.commands.registerCommand('giteaVscode.refreshIssues', () => {
+            issuesProvider.refresh();
+        }),
+        // vscode.commands.registerCommand('giteaVscode.newIssue', (repo: RepositoryTreeItem) => {
+        //     vscode.env.openExternal(vscode.Uri.parse(repo.base_url+'/issues/new'));
+        // }),
+        vscode.commands.registerCommand('giteaVscode.openIssue', (issue: IssueTreeItem) => {
+            return issuesProvider.setIssueState(issue, "open").then(() => {
+                Logger.log(`Updated issuesProvider (open issue  ${issue.content.number})`);
+            });
+        }),
+        vscode.commands.registerCommand('giteaVscode.closeIssue', (issue: IssueTreeItem) => {
+            return issuesProvider.setIssueState(issue, "closed").then(() => {
+                Logger.log(`Updated issuesProvider (close issue ${issue.content.number})`);
+                // issuesProvider.onDidChangeTreeData.fire
+            });
+        }),
+        vscode.commands.registerCommand('giteaVscode.commentIssue', (issue: IssueTreeItem, text: string) => {
+            return issuesProvider.addCommentToIssue(issue, text);
+        }),
+        // Unused
+        // vscode.commands.registerCommand('giteaVscode.toogleIssue', (issue: IssueTreeItem) => {
+        //     Logger.log("reopen or close issue " + issue.content.id);
+        //     vscode.env.openExternal(vscode.Uri.parse(issue.content.url)); // TODO use API with a web view
+        // }),
+        vscode.commands.registerCommand('giteaVscode.openRepoInBrowser', (elt: RepositoryTreeItem | IssueTreeItem) => {
+            if (elt instanceof RepositoryTreeItem) {
+                vscode.env.openExternal(vscode.Uri.parse(elt.base_url));
+            }
+            else if (elt instanceof IssueTreeItem) {
+                vscode.env.openExternal(vscode.Uri.parse(elt.content.html_url));
+            }
+        })
+    );
+
+    // Notifications
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider("giteaVscode.notifications", notificationsProvider),        
+        vscode.commands.registerCommand('giteaVscode.refreshNotifications', () => {
+            notificationsProvider.refresh();
+        }),
+        vscode.commands.registerCommand('giteaVscode.openNotifInBrowser', (elt: NotificationTreeItem) => {
+            vscode.env.openExternal(vscode.Uri.parse(elt.content.url));
+        }),
+        vscode.commands.registerCommand('giteaVscode.markNotifAsRead', (elt: NotificationTreeItem) => {
+            notificationsProvider.markAsRead(elt);
+        })
+    );
+
+    // Webview
+    context.subscriptions.push(
+        vscode.commands.registerCommand('giteaVscode.showIssue', (owner_name: string, repo_name: string, issue_id: number) => {
+            GiteaWebViewPanel.createOrShow(context.extensionUri, issuesProvider.getIssue(owner_name, repo_name, issue_id));
+        }),
+        vscode.commands.registerCommand('giteaVscode.showNotification', (notification_id: number) => {
+            GiteaWebViewPanel.createOrShow(context.extensionUri, notificationsProvider.getNotification(notification_id));
+        }),
+        vscode.commands.registerCommand('giteaVscode.newIssue', (owner_name: string, repo_name: string) => {
+            GiteaWebViewPanel.createOrShow(context.extensionUri, issuesProvider.getRepo(owner_name, repo_name));
+        })
+        // vscode.commands.registerCommand('giteaVscode.showPullRequest', () => {
+        //     GiteaWebViewPanel.createOrShow(context.extensionUri, repositoryProvider);
+        // })
+    );
+
+    if (vscode.window.registerWebviewPanelSerializer) {
+		// Make sure we register a serializer in activation event
+		vscode.window.registerWebviewPanelSerializer(GiteaWebViewPanel.viewType, {
+			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+				console.log(`Got state: ${state}`);
+				// Reset the webview options so we use latest uri for `localResourceRoots`.
+				webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
+				GiteaWebViewPanel.revive(webviewPanel, context.extensionUri);
+			}
+		});
+    }
     
     Logger.log('Gitea is ready');
+
+    issuesProvider.refresh();
+    await notificationsProvider.refresh();
 
     notificationsProvider.autorefresh();
 }

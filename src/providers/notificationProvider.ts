@@ -89,7 +89,7 @@ export class NotificationsProvider implements vscode.TreeDataProvider<Notificati
             notification.command = {
                 command: 'giteaVscode.showNotification',
                 title: '',
-                arguments: [notification],
+                arguments: [notification.content.id],
             };
             Logger.debug('Notification processed', { 'id': notification.content.id});
         });
@@ -156,5 +156,13 @@ export class NotificationsProvider implements vscode.TreeDataProvider<Notificati
             return Promise.resolve(childItems);
         }
         return this.notificationsList;
+    }
+
+    public getNotification(notification_id: number) : NotificationTreeItem | undefined {
+        let result = this.notificationsList.find( elt => elt.content.id === notification_id);
+        if (result) {
+            return result;
+        }
+        return undefined;
     }
 }

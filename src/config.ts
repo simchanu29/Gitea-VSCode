@@ -5,7 +5,8 @@ interface ConfigStorage {
     instanceURL: string;
     apiUrl: string;
     owner: string;
-    repoList: Array<string>;
+    // repoList: Array<string>;
+    orgList: Array<string>;
     sslVerify: boolean;
     baseURL: string;
     render: string;
@@ -17,7 +18,7 @@ interface ConfigStorage {
 }
 
 export interface ConfigTypes extends ConfigStorage {
-    readonly repoApiUrlList: Array<string>;
+    // readonly repoApiUrlList: Array<string>;
 }
 
 export class Config implements ConfigTypes {
@@ -92,26 +93,30 @@ export class Config implements ConfigTypes {
         this.storage.update('owner', value);
     }
 
-    public get repoList() {
-        return this.loadConfigValue('repoList', 'string[]');
+    // public get repoList() {
+    //     return this.loadConfigValue('repoList', 'string[]');
+    // }
+
+    public get orgList() {
+        return this.loadConfigValue('orgList', 'string[]');
     }
 
-    public set repoList(value) {
-        this.storage.update('repoList', value);
+    // public set repoList(value) {
+    //     this.storage.update('repoList', value);
+    // }
+
+    public set orgList(value) {
+        this.storage.update('orgList', value);
     }
 
-    public get repoApiUrlList(): Array<string> {
-        let urlList: Array<string> = [];
-        this.repoList.forEach((repo: string) => {
-            const url: string = 
-                this.instanceURL.replace(/\/$/, "") +
-                '/api/v1/repos/' +
-                this.owner +
-                '/' + repo + '/issues';
-            urlList.push(url);
-        });
-        return urlList;
-    }
+    // public get repoApiUrlList(): Array<string> {
+    //     let urlList: Array<string> = [];
+    //     this.repoList.forEach((repo: string) => {
+    //         const url: string = `${this.instanceURL.replace(/\/$/, "")}/api/v1/repos/${this.owner}/${repo}/issues`;
+    //         urlList.push(url);
+    //     });
+    //     return urlList;
+    // }
 
     public set sslVerify(value) {
         this.storage.update('sslVerify', value);
