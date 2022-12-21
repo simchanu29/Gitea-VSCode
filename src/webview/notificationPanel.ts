@@ -104,7 +104,7 @@ export class NotificationPanel extends BasePanel {
         // toolkit
         const toolkitUri = getUri(webview, this._extensionUri, ["node_modules", "@vscode", "webview-ui-toolkit", "dist", "toolkit.js"]);
         // Local path to main script run in the webview and the uri we use to load this script in the webview
-        const scriptUri = getUri(webview, this._extensionUri, ['src', 'webview', 'webview.js']);
+        const scriptUri = getUri(webview, this._extensionUri, ['resources', 'js', 'webview.js']);
         // Local path to css styles and Uri to load styles into webview
 		const stylesPostUri = getUri(webview, this._extensionUri, ['resources', 'css', 'main_style.css']);
 		
