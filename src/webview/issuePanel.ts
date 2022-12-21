@@ -166,7 +166,7 @@ export class IssuePanel extends BasePanel {
                     <td><b>Author</b></td><td>: ${issue.content.user.login}</td>
                 </tr>
                 <tr>
-                    <td><b>Assignees</b></td><td>: ${getAssignee(issue)}}</td>
+                    <td><b>Assignees</b></td><td>: ${getAssignee(issue)}</td>
                 </tr>
                 <tr>
                     <td><b>Labels</b></td><td>${markdown_render(": " + getBadges(issue))}</td>

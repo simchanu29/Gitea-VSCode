@@ -137,13 +137,15 @@ export class NotificationsProvider implements vscode.TreeDataProvider<Notificati
         await giteaConnector.setNotificationState(notification.content.id, "read");
         
         // Remove read notification
-        this.notificationsList.splice(
-            this.notificationsList.findIndex(
-                elt => elt.content.id === notification.content.id
-            ), 1
+        let notif_id = this.notificationsList.findIndex(
+            elt => elt.content.id === notification.content.id
         );
+        if(notif_id < 0) {
+            return;
+        }
+        this.notificationsList.splice(notif_id, 1);
 
-        this._onDidChangeTreeData.fire(undefined);
+        this._onDidChangeTreeData.fire();
     }
 
     getChildren(element?: NotificationTreeItem): vscode.ProviderResult<any[]> {

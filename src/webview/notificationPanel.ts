@@ -168,7 +168,10 @@ export class NotificationPanel extends BasePanel {
                 break;
             case 'mark-notif-read':
                 if(this.activeNotification) {
-                    vscode.commands.executeCommand("giteaVscode.markNotifAsRead", this.activeNotification.content.id);
+                    vscode.commands.executeCommand("giteaVscode.markNotifAsRead", this.activeNotification).then(() => {
+                        this.activeNotification = undefined;
+                        this.update();
+                    });
                 }
                 break;
         }
