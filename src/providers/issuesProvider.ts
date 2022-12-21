@@ -9,6 +9,7 @@ import { config } from 'process';
 import { IGitea } from '../gitea/IGiteaResponse';
 import { ignore } from '@microsoft/fast-foundation';
 import { getUri } from '../webview/utils';
+import { isBigIntLiteral } from 'typescript';
 
 export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem | RepositoryTreeItem | IssueTypeTreeItem | IssueTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<
@@ -197,12 +198,6 @@ export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem
                 }
             });
 
-            issue.command = {
-                command: 'giteaVscode.showIssue',
-                title: '',
-                arguments: [issue.content.repository.owner, issue.content.repository.name, issue.content.number],
-            };
-
             // Push to issueList
             node.issues.push(issue);
 
@@ -260,8 +255,38 @@ export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem
         let comment = await giteaConnector.addCommentToIssue(issue.content.repository.owner, issue.content.repository.name, issue.content.number, body);
         issue.comments.push(CommentTreeItem.createFromGitea(comment));
 
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(); // Update UI
     }
+
+    public async addNewIssue(owner_name: string, repo_name: string, issue_title: string, issue_body: string) {
+        const config = new Config(); // TODO c'est pas super de créer des objets en permanence
+        const giteaConnector = new GiteaConnector(config.apiUrl, config.token, config.sslVerify);
+
+        // let giteaIssue = await giteaConnector.
+        let data: IGitea.CreateIssueOption = {
+            body: issue_body, 
+            title: issue_title,
+            closed: false
+        };
+
+        let new_issue_gitea = await giteaConnector.newIssue(owner_name, repo_name, data);
+        let new_issue = IssueTreeItem.createFromGitea(new_issue_gitea);
+
+        let owner_id = this.getOwnerId(owner_name);
+        if (owner_id < 0) {
+            return;
+        }
+        let repo_id = this.getRepoId(this.ownerList[owner_id], repo_name);
+        if (repo_id < 0) {
+            return;
+        }
+
+        this.ownerList[owner_id].repositories[repo_id].issuesOpen.issues.push(new_issue);
+
+        this._onDidChangeTreeData.fire(); // Update UI
+
+    }
+
 
     public async setIssueState(issue: IssueTreeItem, new_state: string) {
         let owner_id = this.getOwnerId(issue.content.repository.owner);
@@ -299,9 +324,7 @@ export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem
             }
         }
 
-        // this._onDidChangeTreeData.fire(this.repoList[repo_id].issuesOpen);
-        // this._onDidChangeTreeData.fire(this.repoList[repo_id].issuesClosed);
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(); // Update UI
     }
 
     public async refresh() {
@@ -315,13 +338,8 @@ export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem
                 this.ownerList[i].repositories[j] = (await this.getIssuesAsync(this.ownerList[i].repositories[j]));
             }
         }
-        // this.createEmptyRepositoryList();
-        // this.getRepositoriesAsync();
-        // for (let i = 0; i < this.repoList.length; i++) {
-        //     this.repoList[i] = (await this.getIssuesAsync(this.repoList[i]));
-        // }
 
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(); // Update UI
     }
 
     getChildren(element?: OwnerTreeItem | RepositoryTreeItem | IssueTypeTreeItem | IssueTreeItem): vscode.ProviderResult<any[]> {
@@ -369,8 +387,14 @@ export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem
         return this.ownerList.findIndex( elt => elt.name === owner_name);
     }
 
-    public getRepoId(owner: OwnerTreeItem, repo_name: string) : number {
-        return owner.repositories.findIndex( elt => elt.label === repo_name);
+    public getRepoId(owner: OwnerTreeItem | string, repo_name: string) : number {
+        if(owner instanceof OwnerTreeItem) {
+            return owner.repositories.findIndex( elt => elt.label === repo_name);
+        } else {
+            let owner_id = this.ownerList.findIndex( elt => elt.name === owner);
+            if(owner_id < 0) { return owner_id; }
+            return this.ownerList[owner_id].repositories.findIndex( elt => elt.label === repo_name);
+        }
     }
 
     public getIssue(owner_name: string, repo_name: string, issue_id: number) : IssueTreeItem | undefined {
@@ -379,7 +403,7 @@ export class RepositoryProvider implements vscode.TreeDataProvider<OwnerTreeItem
             return undefined;
         }
 
-        let repo_id = this.getRepoId(this.ownerList[owner_id], repo_name);
+        let repo_id = this.getRepoId(owner_name, repo_name);
         if (repo_id < 0) {
             return undefined;
         }

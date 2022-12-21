@@ -98,3 +98,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Modified
 - Refactor gitea connector
 - add description in notifications
+
+## [0.2.0-0.4.0]
+
+### Added
+- add new issue panel
+- add possibility to add comment to issue
+- add button to switch to the issue mentioned by the notification
+
+### Modified
+- Refactor webviews
+- Refactor tree for issue by adding owner

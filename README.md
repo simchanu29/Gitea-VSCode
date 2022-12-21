@@ -48,8 +48,7 @@ Otherwise do not push the .vscode folder to your repository and doublecheck this
 - fill in `.vscode/settings.json` 
 ```
     , "gitea.instanceURL": "%YOUR_GITEA_SERVER%"
-    , "gitea.owner": "%OWNER%"
-    , "gitea.repoList": ["%REPO_NAME%"]
+    , "gitea.ownerList": ["%OWNER_NAME%"]
 ```
 
 ### The following details are needed
@@ -59,7 +58,6 @@ Otherwise do not push the .vscode folder to your repository and doublecheck this
 - BaseURL (default to "") in case you have your instance reachable on a suburl.
 - Domain in format: "example.com"
 - Repository owner (may be an organisation): "TestOrganisation"
-- Repository name "ExampleRepository"
 
 When you've finished you can press the refresh button in the open issues section and you'll see the issues of the first 10 pages (only open issues).
 
@@ -82,8 +80,6 @@ NOTE: Be sure to merge the latest from "upstream" before making a pull request!
 
 ## Roadmap
 
-- Create Issues via Webview
-- `Comment` Issues
 - Support multiple git servers
 
 ## Roadmap SCU

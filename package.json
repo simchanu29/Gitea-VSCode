@@ -3,7 +3,7 @@
     "displayName": "Gitea-VSCode",
     "description": "Gitea Tracker for vs-code",
     "publisher": "simchanu29",
-    "version": "2.2.0-0.3.0",
+    "version": "2.2.0-0.4.0",
     "engines": {
         "vscode": "^1.70.0"
     },
@@ -77,11 +77,15 @@
             },
             {
                 "command": "giteaVscode.newIssue",
-                "title": "New issue",
+                "title": "New issue with webview",
                 "icon": {
                     "dark": "resources/dark/create.svg",
                     "light": "resources/light/create.svg"
                 }
+            },
+            {
+                "command": "giteaVscode.newIssueCreate",
+                "title": "New issue with data"
             },
             {
                 "command": "giteaVscode.toogleIssue",

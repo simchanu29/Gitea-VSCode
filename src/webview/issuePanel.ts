@@ -118,8 +118,20 @@ export class NewIssuePanel extends BasePanel {
         return html;
 	}
 
-    public onDidMsg() : string {
-        return "NOT IMPLEMENTED";
+    public onDidMsg(action: string, args: any) {
+        switch(action) {
+            case 'new-issue':
+                if(this.activeRepository && args.title !== undefined && args.body !== undefined) {
+                    vscode.commands.executeCommand("giteaVscode.newIssueCreate", 
+                        this.activeRepository.owner, 
+                        this.activeRepository.label, 
+                        args.title, args.body
+                    ).then(() => {
+                        this.update(); 
+                    });
+                }
+                break;
+        }
     }
 }
 

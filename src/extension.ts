@@ -60,6 +60,10 @@ export async function activate(context: vscode.ExtensionContext) {
             else if (elt instanceof IssueTreeItem) {
                 vscode.env.openExternal(vscode.Uri.parse(elt.content.html_url));
             }
+        }),
+        vscode.commands.registerCommand('giteaVscode.newIssueCreate', (owner_name: string, repo_name: string, issue_title: string, issue_body: string) => {
+            // TODO config to create from quickpick instead of webview
+            return issuesProvider.addNewIssue(owner_name, repo_name, issue_title, issue_body);
         })
     );
 

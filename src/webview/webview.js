@@ -1,4 +1,4 @@
-////@ts-check
+//// @ts-check
 
 // This script will be run within the webview itself
 // It cannot access the main VS Code APIs directly.
@@ -23,16 +23,24 @@
         onButtonClicked("mark-notif-read");
     });
 
+    document.getElementById('new-issue-button')?.addEventListener('click', () => {
+        let elt_title = document.getElementById("newpost-textfield-title");
+        let elt_body = document.getElementById("newpost-textarea");
+        let title = elt_title?.value;
+        let body = elt_body?.value;
+        onButtonClicked("new-issue", {
+            title: title, 
+            body: body
+        });
 
-    // document.getElementById('show-issue-browser-button')?.addEventListener('click', () => {
-    //     let button = document.getElementById('show-issue-browser-button')
-    //     console.log("show-issue-button", button);
-    //     onButtonClicked("openurl", button.);
-    // });    
+        elt_title.value = '';
+        elt_body.value = '';
 
-    // document.getElementById('open-button')?.addEventListener('click', () => {
-    //     onButtonClicked("open", elementId);
-    // });
+        vscode.postMessage({
+            type: "alert", 
+            text: "Issue created"
+        });
+    });
 
     document.getElementById('comment-button')?.addEventListener('click', () => {
         let text = document.getElementById("newpost-textarea")?.value;
@@ -48,13 +56,7 @@
         {
             console.warn("Empty content in textarea");
         }
-    });    
-
-    // function resizeTextarea (id) {
-    //     var a = document.getElementById(id);
-    //     a.style.height = 'auto';
-    //     a.style.height = a.scrollHeight+'px';
-    // }
+    });
 
     function onButtonClicked(action, args) {
         let message = { type: 'gitea-action', panel: panel, action: action, args: args}

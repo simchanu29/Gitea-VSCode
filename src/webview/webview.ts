@@ -157,6 +157,7 @@ export class GiteaWebViewPanel {
 		// Update the content based on view changes
 		this._panel.onDidChangeViewState(
 			e => {
+                console.log("changed view state");
 				if (this._panel.visible) {
 					this._update();
 				}
@@ -182,7 +183,7 @@ export class GiteaWebViewPanel {
                                 this.issuePanel.onDidMsg(message.action, message.args);
                                 break;
                             case 'new-issue':
-                                this.newIssuePanel.onDidMsg();
+                                this.newIssuePanel.onDidMsg(message.action, message.args);
                                 break;
                             case 'notification':
                                 this.notificationPanel.onDidMsg(message.action, message.args);
