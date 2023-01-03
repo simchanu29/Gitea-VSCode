@@ -14,7 +14,7 @@ export abstract class BasePanel {
         this.notify_update = false;
     }
     
-    protected get_default_html(webview: vscode.Webview) {
+    protected async get_default_html(webview: vscode.Webview) : Promise<string> {
 		// Local path to css styles and Uri to load styles into webview
 		const stylesPostUri = getUri(webview, this._extensionUri, ['resources', 'css', 'main_style.css']);
         const nonce = getNonce();
@@ -101,8 +101,8 @@ export abstract class BasePanel {
             <meta name="element-id" content="${index}"/>`;
     }
 
-    abstract get_html(webview: vscode.Webview, elt?: vscode.TreeItem) : string;
+    abstract get_html(webview: vscode.Webview, elt?: vscode.TreeItem) : Promise<string>;
     abstract get_markdown(elt: vscode.TreeItem) : string;
     abstract onDidMsg(action: string, args: any) : void;
-    abstract update() : void;
+    abstract update() : Promise<void>;
 }

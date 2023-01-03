@@ -3,7 +3,7 @@
     "displayName": "Gitea-VSCode",
     "description": "Gitea Tracker for vs-code",
     "publisher": "simchanu29",
-    "version": "2.2.0-0.4.0",
+    "version": "2.2.0",
     "engines": {
         "vscode": "^1.70.0"
     },

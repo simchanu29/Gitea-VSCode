@@ -3,7 +3,7 @@ import { Config } from '../config';
 import { BasePanel } from './basePanel';
 import { IssueTreeItem, RepositoryTreeItem } from '../nodes/issues';
 import { CommentTreeItem } from '../nodes/comment';
-import { getUri, getNonce, markdown_render } from './utils';
+import { getUri, getNonce, markdown_render, markdown_render_async } from './utils';
 
 export function getBadges(issue: IssueTreeItem) {
     return issue.content.labels.map(label => {
@@ -29,14 +29,14 @@ export class NewIssuePanel extends BasePanel {
         super(panel, extensionUri);
     }
 
-    public update(repo?: RepositoryTreeItem) {
+    public async update(repo?: RepositoryTreeItem) {
         const webview = this._panel.webview;
         this._panel.title = "Gitea New issue";
 
         if (repo) {
             this.activeRepository = repo;
         }
-		this._panel.webview.html = this.get_html(webview);
+		this._panel.webview.html = await this.get_html(webview);
     }
 
     public get_markdown() : string {
@@ -47,14 +47,14 @@ export class NewIssuePanel extends BasePanel {
         return this.get_meta_html("new-issue", "New issue", 0);
     }
 
-	public get_html(webview: vscode.Webview) {
+	public async get_html(webview: vscode.Webview) {
         if(this.activeRepository === undefined) {
             return this.get_default_html(webview);
         }
         
         const config = new Config();
         if(config.render === 'md') {
-            return markdown_render(this.get_markdown());
+            return markdown_render_async(this.get_markdown());
         }
         
         // Use a nonce to only allow specific scripts to be run
@@ -143,7 +143,7 @@ export class IssuePanel extends BasePanel {
         super(panel, extensionUri);
     }
 
-    public update(issue? : IssueTreeItem) {
+    public async update(issue? : IssueTreeItem) {
         const webview = this._panel.webview;
         this._panel.title = "Gitea Issues";
 
@@ -151,10 +151,10 @@ export class IssuePanel extends BasePanel {
         {
             this.activeIssue = issue;
         }
-		this._panel.webview.html = this.get_html(webview, this.activeIssue);
+		this._panel.webview.html = await this.get_html(webview, this.activeIssue);
     }
 
-    private get_header_html(issue : IssueTreeItem) {
+    private async get_header_html(issue : IssueTreeItem) {
         return `
         <div class="title-container">
             <h1>${issue.label}</h1>
@@ -169,41 +169,41 @@ export class IssuePanel extends BasePanel {
                     <td><b>Assignees</b></td><td>: ${getAssignee(issue)}</td>
                 </tr>
                 <tr>
-                    <td><b>Labels</b></td><td>${markdown_render(": " + getBadges(issue))}</td>
+                    <td><b>Labels</b></td><td>${await markdown_render_async(": " + getBadges(issue))}</td>
                 </tr>
             </table>
             <a href=${issue.content.html_url}>View in browser</a>
         </div>`;
     }
 
-    private get_first_post_html(issue : IssueTreeItem) {
+    private async get_first_post_html(issue : IssueTreeItem) {
         return `
         <div class="post-container">
             <div class="post-header">
                 <b>${issue.content.user.login}</b> - <i>${new Date(issue.content.created_at).toLocaleString()}</i>
             </div>
             <div class="post-body">
-                ${markdown_render(issue.content.body)}
+                ${await markdown_render_async(issue.content.body)}
             </div>
         </div>
         `;
     }
 
-    private get_posts_html(issue : IssueTreeItem) {
+    private async get_posts_html(issue : IssueTreeItem) {
         let posts = ``;
-        issue.comments.forEach((comment: CommentTreeItem) => {
+        for (let comment of issue.comments) {
             let post = `     
             <div class="post-container">
                 <div class="post-header">
                     <b>${comment.content.user.login}</b> - <i>${new Date(comment.content.created_at).toLocaleString()}</i>
                 </div>
                 <div class="post-body">
-                    ${markdown_render(comment.content.body)}
+                    ${await markdown_render_async(comment.content.body)}
                 </div>
             </div>
             `;
             posts = posts + post;
-        });
+        }
         return posts;
     }
 
@@ -215,14 +215,14 @@ export class IssuePanel extends BasePanel {
         return "NOT IMPLEMENTED";
     }
 
-	public get_html(webview: vscode.Webview, issue? : IssueTreeItem) : string {
+	public async get_html(webview: vscode.Webview, issue? : IssueTreeItem) : Promise<string> {
         if(issue === undefined) {
             return this.get_default_html(webview);
         }
         
         const config = new Config();
         if(config.render === 'md') {
-            return markdown_render(this.get_markdown(issue));
+            return markdown_render_async(this.get_markdown(issue));
         }
         
         // Use a nonce to only allow specific scripts to be run
@@ -266,12 +266,12 @@ export class IssuePanel extends BasePanel {
 				<link href="${stylesPostUri}" rel="stylesheet">
 			</head>
 			<body id="webview-body">
-                ${this.get_header_html(issue)}
+                ${await this.get_header_html(issue)}
                 <div class="posts-list-container">
                     <div class="posts-list-timeline"></div>
                     <div class="posts-list">
-                        ${this.get_first_post_html(issue)}
-                        ${this.get_posts_html(issue)}
+                        ${await this.get_first_post_html(issue)}
+                        ${await this.get_posts_html(issue)}
                         <div class="newpost-container">
                             <vscode-panels>
                                 <vscode-panel-tab  id="tab-1">Write</vscode-panel-tab>

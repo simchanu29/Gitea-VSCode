@@ -86,20 +86,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 [2]: https://github.com/IJustDev/Gitea-VSCode/issues/2
 [21]: https://github.com/IJustDev/Gitea-VSCode/issues/21
 
-## [0.2.0-0.1.0]
+## [2.2.0-0.1.0]
 
 ### Modified
 - Change architecture to handle multiple repositories
 - Open in browser
 - New issue
 
-## [0.2.0-0.3.0]
+## [2.2.0-0.3.0]
 
 ### Modified
 - Refactor gitea connector
 - add description in notifications
 
-## [0.2.0-0.4.0]
+## [2.2.0-0.4.0]
 
 ### Added
 - add new issue panel
@@ -109,3 +109,21 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Modified
 - Refactor webviews
 - Refactor tree for issue by adding owner
+
+## [2.2.0-0.4.0]
+
+### Added
+- add new issue panel
+- add possibility to add comment to issue
+- add button to switch to the issue mentioned by the notification
+
+### Modified
+- Refactor webviews
+- Refactor tree for issue by adding owner
+
+## [2.2.0]
+
+Divers debugs
+
+### Modified
+- Modification architecturale pour passer les fonctions de la webview en async

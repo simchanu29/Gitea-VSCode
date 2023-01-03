@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Config } from '../config';
 import { BasePanel } from './basePanel';
 import { NotificationTreeItem } from '../nodes/notifications';
-import { getUri, getNonce, markdown_render } from './utils';
+import { getUri, getNonce, markdown_render, markdown_render_async } from './utils';
 import { Logger } from '../logger';
 
 export class NotificationPanel extends BasePanel {
@@ -14,7 +14,7 @@ export class NotificationPanel extends BasePanel {
         super(panel, extensionUri);
     }
 
-    public update(notification? : NotificationTreeItem){
+    public async update(notification? : NotificationTreeItem){
         // Affichage d'une notification
         const webview = this._panel.webview;
         this._panel.title = "Gitea Notifications";
@@ -23,7 +23,7 @@ export class NotificationPanel extends BasePanel {
         {
             this.activeNotification = notification;
         }
-        this._panel.webview.html = this.get_html(webview, this.activeNotification);
+        this._panel.webview.html = await this.get_html(webview, this.activeNotification);
     }
 
     private get_post_html(notification : NotificationTreeItem) : string {
@@ -60,13 +60,13 @@ export class NotificationPanel extends BasePanel {
         `;
     }
 
-    private get_comment_html(notification : NotificationTreeItem) : string {
+    private async get_comment_html(notification : NotificationTreeItem) : Promise<string> {
         return `
         <div class="post-header">
             <b>${notification.attached_comment!.content.user.login}</b> - <i>${new Date(notification.attached_comment!.content.created_at).toLocaleString()}</i>
         </div>
         <div class="post-body">
-            ${markdown_render(notification.attached_comment!.content.body)}
+            ${await markdown_render_async(notification.attached_comment!.content.body)}
         </div>
         `;
     }
@@ -88,7 +88,7 @@ export class NotificationPanel extends BasePanel {
         `;
     }
 
-	public get_html(webview: vscode.Webview, notification? : NotificationTreeItem) : string 
+	public async get_html(webview: vscode.Webview, notification? : NotificationTreeItem) : Promise<string> 
     {
         if(notification === undefined) {
             return this.get_default_html(webview);
@@ -96,7 +96,7 @@ export class NotificationPanel extends BasePanel {
 
         const config = new Config();
         if(config.render === 'md') {
-            return markdown_render(this.get_markdown(notification));
+            return markdown_render_async(this.get_markdown(notification));
         }
 
         // Use a nonce to only allow specific scripts to be run
@@ -136,7 +136,7 @@ export class NotificationPanel extends BasePanel {
                     </a>
                 </div>     
                 <div class="post-container">
-                    ${this.get_comment_html(notification)}
+                    ${await this.get_comment_html(notification)}
                 </div>
             </body>
         </html>`;

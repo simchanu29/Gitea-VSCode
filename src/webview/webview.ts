@@ -74,8 +74,11 @@ export class GiteaWebViewPanel {
 
 		// If we already have a panel, show it.
 		if (GiteaWebViewPanel.currentPanel) {
-            GiteaWebViewPanel.currentPanel._update(elt);
-			GiteaWebViewPanel.currentPanel._panel.reveal(column);
+            GiteaWebViewPanel.currentPanel._update(elt).then(() => {
+                if (GiteaWebViewPanel.currentPanel) {
+                    GiteaWebViewPanel.currentPanel._panel.reveal(column);
+                }
+            });
 			return GiteaWebViewPanel.currentPanel;
 		}
 
@@ -216,25 +219,25 @@ export class GiteaWebViewPanel {
 		}
 	}
 
-	private _update(data? : NotificationTreeItem | IssueTreeItem | RepositoryTreeItem) {
+	private async _update(data? : NotificationTreeItem | IssueTreeItem | RepositoryTreeItem) {
         if (data === undefined)
         {
-            this.getPanel(this.activePanelName).update();
+            await this.getPanel(this.activePanelName).update();
         }
 
         if (data instanceof IssueTreeItem)
         {
-            this.issuePanel.update(data);
+            await this.issuePanel.update(data);
             return;
         }
         else if (data instanceof NotificationTreeItem)
         {
-            this.notificationPanel.update(data);
+            await this.notificationPanel.update(data);
             return;
         }
         else if (data instanceof RepositoryTreeItem)
         {
-            this.newIssuePanel.update(data);
+            await this.newIssuePanel.update(data);
             return;
         }
 	}

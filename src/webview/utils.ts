@@ -25,6 +25,9 @@ export function getNonce() {
 }
 
 import MarkdownIt = require('markdown-it');
+import { GiteaConnector } from '../gitea/giteaConnector';
+import { Config } from '../config';
+
 export function markdown_render(md: string): string {
     let markdownIt = new MarkdownIt();
 
@@ -36,4 +39,10 @@ export function markdown_render(md: string): string {
         .replace(/([^"'])(https:\/\/[^ "'\)<]+)/g, '$1<a href=$2>$2</a>');
 
     return html;
+}
+
+export async function markdown_render_async(md: string): Promise<string> {
+    const config = new Config();
+    const renderer = new GiteaConnector(config.apiUrl, config.token, config.sslVerify);
+    return renderer.renderMardownRaw(md); 
 }
