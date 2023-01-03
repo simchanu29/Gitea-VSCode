@@ -42,6 +42,8 @@ export function markdown_render(md: string): string {
 }
 
 export async function markdown_render_async(md: string): Promise<string> {
+    return markdown_render(md);
+
     const config = new Config();
     const renderer = new GiteaConnector(config.apiUrl, config.token, config.sslVerify);
     return renderer.renderMardownRaw(md); 
