@@ -14,6 +14,8 @@
 
 </div>
 
+# !!! FORK from https://github.com/IJustDev/Gitea-VSCode Work in progress !!!
+
 ## Overview
 Gitea-VSCode is an Visual Studio Code extension that allows you to manage (currently only view) your issues on multiple repositories.
 
